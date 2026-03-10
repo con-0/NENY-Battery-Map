@@ -128,6 +128,11 @@ nav {
 #stationsLayer {
   position:absolute; inset:0; pointer-events:all;
 }
+#focusLabels {
+  position:absolute; inset:0;
+  pointer-events:none;
+  z-index:120;
+}
 
 .rlabel {
   position:absolute; transform:translate(-50%,-50%);
@@ -230,7 +235,7 @@ body.dark .dot.senior:hover .dot-circle, body.dark .dot.senior.sel .dot-circle {
   box-shadow:0 0 0 5px rgba(189,208,255,0.24), 0 0 0 2.5px var(--bg);
 }
 
-/* labels */
+/* dot tips for hover only */
 .dot-tip {
   position:absolute;
   bottom:calc(100% + 10px);
@@ -247,13 +252,7 @@ body.dark .dot.senior:hover .dot-circle, body.dark .dot.senior.sel .dot-circle {
   box-shadow:0 8px 24px rgba(0,0,0,0.10);
   pointer-events:none;
   opacity:0;
-  transition:
-    opacity 220ms ease,
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    left 520ms cubic-bezier(0.22, 1, 0.36, 1),
-    right 520ms cubic-bezier(0.22, 1, 0.36, 1),
-    top 520ms cubic-bezier(0.22, 1, 0.36, 1),
-    bottom 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:opacity 220ms ease, transform 220ms ease;
   max-width:230px;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -265,43 +264,61 @@ body.dark .dot-tip {
   color:#f6f9ff;
   box-shadow:0 10px 28px rgba(0,0,0,0.40);
 }
-.dot:hover .dot-tip,
-.dot.sel .dot-tip,
-.dot.show-label .dot-tip {
+.dot:hover .dot-tip {
   opacity:1;
-}
-
-.dot.label-below .dot-tip {
-  top:calc(100% + 10px);
-  bottom:auto;
-  left:50%;
-  right:auto;
   transform:translateX(-50%) translateY(0);
 }
-
-.dot.label-left .dot-tip {
-  left:auto;
-  right:calc(100% + 14px);
-  top:50%;
-  bottom:auto;
-  transform:translateY(-50%);
+.wheel-wrap.focus-mode .dot .dot-tip {
+  opacity:0 !important;
+  transform:translateX(-50%) translateY(4px) !important;
 }
 
-.dot.label-right .dot-tip {
-  left:calc(100% + 14px);
-  right:auto;
-  top:50%;
-  bottom:auto;
-  transform:translateY(-50%);
+/* separate measured labels */
+.focus-label {
+  position:absolute;
+  white-space:nowrap;
+  font-size:11px;
+  font-weight:600;
+  color:var(--label);
+  background:var(--glass2);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  padding:6px 12px;
+  border-radius:10px;
+  border:0.5px solid var(--sep);
+  box-shadow:0 8px 24px rgba(0,0,0,0.10);
+  transition:
+    left 520ms cubic-bezier(0.22,1,0.36,1),
+    top 520ms cubic-bezier(0.22,1,0.36,1),
+    opacity 220ms ease;
+  opacity:0;
+  max-width:240px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+body.dark .focus-label {
+  background:rgba(17,26,43,0.98);
+  border-color:rgba(207,224,255,0.18);
+  color:#f6f9ff;
+  box-shadow:0 10px 28px rgba(0,0,0,0.40);
+}
+.focus-label.show { opacity:1; }
+
+.focus-stem {
+  position:absolute;
+  height:2px;
+  background:var(--sep);
+  opacity:0.75;
+  transition:
+    left 520ms cubic-bezier(0.22,1,0.36,1),
+    top 520ms cubic-bezier(0.22,1,0.36,1),
+    width 520ms cubic-bezier(0.22,1,0.36,1),
+    opacity 220ms ease;
+}
+body.dark .focus-stem {
+  background:rgba(220,232,255,0.28);
 }
 
-.dot.label-center .dot-tip {
-  left:50%;
-  right:auto;
-  top:auto;
-  bottom:calc(100% + 10px);
-  transform:translateX(-50%);
-}
 /* ─── EDGES ──────────────────────────────────────── */
 .cline {
   fill:none;
@@ -540,7 +557,7 @@ body.dark .fp { box-shadow:-10px 0 28px rgba(0,0,0,0.25); }
         <line x1="16.95" y1="7.05" x2="19.07" y2="4.93"></line>
       </svg>
     </button>
-    <button class="nav-btn" id="filterBtn" onclick="toggleFP()">
+    <button class="nav-btn on" id="filterBtn" onclick="toggleFP()">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M2 4h12M4 8h8M6 12h4"></path>
       </svg>
@@ -554,6 +571,7 @@ body.dark .fp { box-shadow:-10px 0 28px rgba(0,0,0,0.25); }
     <div id="ringLabels"></div>
     <div id="catLabels"></div>
     <div id="stationsLayer"></div>
+    <div id="focusLabels"></div>
     <svg class="svg-layer" id="svgLines" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
          style="pointer-events:none;position:absolute;inset:0;z-index:20"></svg>
   </div>
@@ -569,7 +587,7 @@ body.dark .fp { box-shadow:-10px 0 28px rgba(0,0,0,0.25); }
   </div>
 </div>
 
-<div class="fp" id="fp">
+<div class="fp open" id="fp">
   <div class="fp-head">Filter</div>
   <div class="fp-section">
     <div class="fp-section-label">Level</div>
@@ -629,6 +647,14 @@ const PIE_COLORS_DARK = [
   '#9A6BFF', '#26C0FF', '#82CB1E', '#FF5EA5',
   '#748DFF', '#FF9F1A', '#10B5AD', '#FF7F7F'
 ];
+
+function normalizeFilterValue(v) {
+  return String(v ?? '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
 
 function toggleTheme() {
   isDark = !isDark;
@@ -691,7 +717,7 @@ function splitCSVLine(line) {
 function parseCSV(csv) {
   const lines = csv.trim().split('\n');
   if (lines.length < 2) return [];
-  const hdr = splitCSVLine(lines[0]);
+  const hdr = splitCSVLine(lines[0]).map(h => h.trim());
   const out = [];
 
   for (let i = 1; i < lines.length; i++) {
@@ -707,23 +733,90 @@ function parseCSV(csv) {
       ? row.skills.split(',').map(s => s.trim()).filter(Boolean)
       : [];
 
+    row.category = (row.category || '').trim();
+    row.level = (row.level || '').trim();
+    row.title = (row.title || '').trim();
+
     if (row.id && row.title) out.push(row);
   }
   return out;
 }
 
 function buildCatFilters() {
-  const cats = [...new Set(roles.map(r => r.category).filter(Boolean))].sort();
-  document.getElementById('fpCats').innerHTML = cats.map(c =>
-    `<div class="fp-row" data-f="category" data-v="${escapeAttr(c)}" onclick="setF('category', ${JSON.stringify(c)})">${escapeHTML(c)}</div>`
-  ).join('');
+  const fpCats = document.getElementById('fpCats');
+  fpCats.innerHTML = '';
+
+  const seen = new Map();
+  roles.forEach(r => {
+    const raw = (r.category || '').trim();
+    if (!raw) return;
+    const norm = normalizeFilterValue(raw);
+    if (!seen.has(norm)) seen.set(norm, raw);
+  });
+
+  const cats = [...seen.values()].sort((a, b) => a.localeCompare(b));
+
+  cats.forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'fp-row';
+    row.dataset.f = 'category';
+    row.dataset.v = cat;
+    row.textContent = cat;
+    row.addEventListener('click', () => setF('category', cat));
+    fpCats.appendChild(row);
+  });
 }
 
-function setLabelClass(el, cls) {
-  el.classList.remove('label-left', 'label-right', 'label-below', 'label-center');
-  if (cls) el.classList.add(cls);
+function escapeHTML(str = '') {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
+function hash01(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return (h % 1000) / 1000;
+}
+function polar(cx, cy, r, a) {
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+function arcSlice(cx, cy, r0, r1, a0, a1) {
+  const fullCircle = Math.abs((a1 - a0) - 2 * Math.PI) < 0.0001;
+
+  if (fullCircle) {
+    return `
+      M ${cx} ${cy - r1}
+      A ${r1} ${r1} 0 1 1 ${cx} ${cy + r1}
+      A ${r1} ${r1} 0 1 1 ${cx} ${cy - r1}
+      L ${cx} ${cy - r0}
+      A ${r0} ${r0} 0 1 0 ${cx} ${cy + r0}
+      A ${r0} ${r0} 0 1 0 ${cx} ${cy - r0}
+      Z
+    `;
+  }
+
+  const p1 = polar(cx, cy, r1, a0), p2 = polar(cx, cy, r1, a1);
+  const p3 = polar(cx, cy, r0, a1), p4 = polar(cx, cy, r0, a0);
+  const laf = a1 - a0 > Math.PI ? 1 : 0;
+
+  return `M${p1.x} ${p1.y} A${r1} ${r1} 0 ${laf} 1 ${p2.x} ${p2.y}
+          L${p3.x} ${p3.y} A${r0} ${r0} 0 ${laf} 0 ${p4.x} ${p4.y} Z`;
+}
+function levelKey(level) {
+  return level === 'Entry' ? 'entry' : level === 'Mid-Level' ? 'mid' : 'senior';
+}
+function sortByRadius(ids) {
+  return [...ids].sort((a, b) => {
+    const pa = basePositions[a], pb = basePositions[b];
+    const ra = pa ? Math.hypot(pa.x - 50, pa.y - 50) : 0;
+    const rb = pb ? Math.hypot(pb.x - 50, pb.y - 50) : 0;
+    return ra - rb;
+  });
+}
 function distributeSlots(count, centerY, gap, minY = 14, maxY = 86) {
   if (count <= 0) return [];
   const total = (count - 1) * gap;
@@ -742,61 +835,6 @@ function distributeSlots(count, centerY, gap, minY = 14, maxY = 86) {
   const out = [];
   for (let i = 0; i < count; i++) out.push(start + i * gap);
   return out;
-}
-
-function getDotEl(id) {
-  return document.querySelector(`.dot[data-id="${CSS.escape(id)}"]`);
-}
-
-function escapeHTML(str = '') {
-  return String(str)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-function escapeAttr(str = '') {
-  return escapeHTML(str);
-}
-
-function hash01(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return (h % 1000) / 1000;
-}
-function polar(cx, cy, r, a) {
-  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-}
-function arcSlice(cx, cy, r0, r1, a0, a1) {
-  const p1 = polar(cx, cy, r1, a0), p2 = polar(cx, cy, r1, a1);
-  const p3 = polar(cx, cy, r0, a1), p4 = polar(cx, cy, r0, a0);
-  const laf = a1 - a0 > Math.PI ? 1 : 0;
-  return `M${p1.x} ${p1.y} A${r1} ${r1} 0 ${laf} 1 ${p2.x} ${p2.y}
-          L${p3.x} ${p3.y} A${r0} ${r0} 0 ${laf} 0 ${p4.x} ${p4.y} Z`;
-}
-function levelKey(level) {
-  return level === 'Entry' ? 'entry' : level === 'Mid-Level' ? 'mid' : 'senior';
-}
-function placementClassForVector(vx, vy) {
-  if (Math.abs(vx) > Math.abs(vy)) return vx >= 0 ? 'label-right' : 'label-left';
-  return vy >= 0 ? 'label-below' : 'label-above';
-}
-function setLabelClass(el, cls) {
-  el.classList.remove('label-left', 'label-right', 'label-below', 'label-above');
-  if (cls && cls !== 'label-above') el.classList.add(cls);
-}
-function vecNormalize(x, y) {
-  const len = Math.hypot(x, y) || 1;
-  return { x: x / len, y: y / len };
-}
-function sortByRadius(ids) {
-  return [...ids].sort((a, b) => {
-    const pa = basePositions[a], pb = basePositions[b];
-    const ra = pa ? Math.hypot(pa.x - 50, pa.y - 50) : 0;
-    const rb = pb ? Math.hypot(pb.x - 50, pb.y - 50) : 0;
-    return ra - rb;
-  });
 }
 
 /* Prefer outward progression */
@@ -859,6 +897,7 @@ function layout() {
   const $cl    = document.getElementById('catLabels');
 
   $svg.innerHTML = $lines.innerHTML = $st.innerHTML = $rl.innerHTML = $cl.innerHTML = '';
+  document.getElementById('focusLabels').innerHTML = '';
   basePositions = {};
   currentPositions = {};
 
@@ -870,7 +909,7 @@ function layout() {
 
   const cx = 50, cy = 50;
   const cats = [...new Set(filtered.map(r => r.category).filter(Boolean))];
-  const sliceAngle = cats.length ? (2 * Math.PI) / cats.length : 0;
+  const sliceAngle = cats.length > 0 ? (2 * Math.PI) / cats.length : 0;
   const pieColors = isDark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT;
 
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -1078,6 +1117,7 @@ function updateEdgesGeometry(posMap) {
     p.setAttribute('d', chevronPath(src.x, src.y, tgt.x, tgt.y));
   });
 }
+
 function buildFocusPositions(roleId) {
   const selected = basePositions[roleId];
   if (!selected) return { ...basePositions };
@@ -1096,7 +1136,6 @@ function buildFocusPositions(roleId) {
   const ux = dx / len;
   const uy = dy / len;
 
-  /* selected node shifts slightly inward for breathing room */
   result[roleId] = {
     ...selected,
     x: selected.x - ux * 2.2,
@@ -1107,11 +1146,8 @@ function buildFocusPositions(roleId) {
   const leftX  = Math.max(18, result[roleId].x - 16);
   const rightX = Math.min(82, result[roleId].x + 16);
 
-  const gapIncoming = Math.max(4.6, Math.min(6.2, 5.1));
-  const gapOutgoing = Math.max(4.8, Math.min(6.8, 5.3));
-
-  const incomingYs = distributeSlots(incoming.length, focusY, gapIncoming, 18, 82);
-  const outgoingYs = distributeSlots(outgoing.length, focusY, gapOutgoing, 18, 82);
+  const incomingYs = distributeSlots(incoming.length, focusY, 5.6, 18, 82);
+  const outgoingYs = distributeSlots(outgoing.length, focusY, 5.6, 18, 82);
 
   incoming.forEach((id, i) => {
     result[id] = {
@@ -1135,16 +1171,134 @@ function buildFocusPositions(roleId) {
 function clearNodeClasses() {
   document.querySelectorAll('.dot').forEach(d => {
     d.classList.remove('sel', 'related', 'show-label', 'dimmed', 'cascade-1', 'cascade-2');
-    setLabelClass(d, '');
   });
   document.querySelectorAll('.cline').forEach(l => l.classList.remove('on', 'dimmed'));
   document.querySelectorAll('.cchev').forEach(l => l.classList.remove('on', 'dimmed'));
 }
 
+function clearFocusLabels() {
+  document.getElementById('focusLabels').innerHTML = '';
+}
+
+function renderFocusLabels(roleId) {
+  clearFocusLabels();
+
+  const layer = document.getElementById('focusLabels');
+  const wrap = document.getElementById('wheelWrap');
+  const wrapRect = wrap.getBoundingClientRect();
+
+  const incoming = sortByRadius(getIncomingIds(roleId).filter(id => id !== roleId));
+  const outgoing = sortByRadius(getOutgoingIds(roleId).filter(id => id !== roleId));
+  const selected = currentPositions[roleId];
+  if (!selected) return;
+
+  const items = [
+    ...incoming.map(id => ({ id, side:'left' })),
+    { id: roleId, side:'center' },
+    ...outgoing.map(id => ({ id, side:'right' }))
+  ];
+
+  const temp = [];
+  items.forEach(item => {
+    const role = roleById.get(item.id);
+    if (!role) return;
+
+    const el = document.createElement('div');
+    el.className = 'focus-label';
+    el.textContent = role.title;
+    el.style.left = '0%';
+    el.style.top = '0%';
+    layer.appendChild(el);
+    temp.push({ ...item, el });
+  });
+
+  temp.forEach(item => {
+    const rect = item.el.getBoundingClientRect();
+    item.w = (rect.width / wrapRect.width) * 100;
+    item.h = (rect.height / wrapRect.height) * 100;
+  });
+
+  const selectedItem = temp.find(t => t.id === roleId);
+  if (selectedItem) {
+    selectedItem.x = Math.max(4, Math.min(96 - selectedItem.w, selected.x - selectedItem.w / 2));
+    selectedItem.y = Math.max(8, selected.y - 9.5);
+  }
+
+  function placeSide(sideItems, side) {
+    if (!sideItems.length) return;
+
+    const nodeXs = sideItems.map(t => currentPositions[t.id].x);
+    const anchorNodeX = side === 'left' ? Math.min(...nodeXs) : Math.max(...nodeXs);
+    const stemGap = 2.2;
+    const railGap = 15;
+
+    sideItems.forEach(item => {
+      const p = currentPositions[item.id];
+      item.y = p.y;
+      if (side === 'left') {
+        item.x = Math.max(2, anchorNodeX - railGap - item.w);
+      } else {
+        item.x = Math.min(98 - item.w, anchorNodeX + railGap);
+      }
+    });
+
+    sideItems.sort((a, b) => a.y - b.y);
+
+    const minGap = 1.8;
+    for (let i = 1; i < sideItems.length; i++) {
+      const prev = sideItems[i - 1];
+      const cur = sideItems[i];
+      const prevBottom = prev.y + prev.h / 2;
+      const curTop = cur.y - cur.h / 2;
+      const overlap = (prevBottom + minGap) - curTop;
+      if (overlap > 0) cur.y += overlap;
+    }
+
+    for (let i = sideItems.length - 2; i >= 0; i--) {
+      const next = sideItems[i + 1];
+      const cur = sideItems[i];
+      const curBottom = cur.y + cur.h / 2;
+      const nextTop = next.y - next.h / 2;
+      const overlap = (curBottom + minGap) - nextTop;
+      if (overlap > 0) cur.y -= overlap;
+    }
+
+    const topOverflow = Math.min(...sideItems.map(i => i.y - i.h / 2)) - 6;
+    if (topOverflow < 0) sideItems.forEach(i => i.y -= topOverflow);
+
+    const bottomOverflow = Math.max(...sideItems.map(i => i.y + i.h / 2)) - 94;
+    if (bottomOverflow > 0) sideItems.forEach(i => i.y -= bottomOverflow);
+
+    sideItems.forEach(item => {
+      item.stem = {
+        x1: side === 'left' ? item.x + item.w : currentPositions[item.id].x,
+        x2: side === 'left' ? currentPositions[item.id].x - stemGap : item.x,
+        y: item.y
+      };
+    });
+  }
+
+  placeSide(temp.filter(t => t.side === 'left'), 'left');
+  placeSide(temp.filter(t => t.side === 'right'), 'right');
+
+  temp.forEach(item => {
+    item.el.style.left = `${item.x}%`;
+    item.el.style.top = `${item.y}%`;
+    requestAnimationFrame(() => item.el.classList.add('show'));
+
+    if (item.side !== 'center' && item.stem) {
+      const stem = document.createElement('div');
+      stem.className = 'focus-stem';
+      stem.style.left = `${Math.min(item.stem.x1, item.stem.x2)}%`;
+      stem.style.top = `${item.stem.y}%`;
+      stem.style.width = `${Math.abs(item.stem.x2 - item.stem.x1)}%`;
+      layer.appendChild(stem);
+    }
+  });
+}
+
 function applyActiveState(roleId) {
   const neighborIds = getNeighborIds(roleId);
-  const incoming = getIncomingIds(roleId).filter(id => id !== roleId);
-  const outgoing = getOutgoingIds(roleId).filter(id => id !== roleId);
   const focusIds = new Set([roleId, ...neighborIds]);
 
   const focusMap = buildFocusPositions(roleId);
@@ -1166,58 +1320,86 @@ function applyActiveState(roleId) {
     l.classList.toggle('dimmed', !isOn);
   });
 
-  let inIndex = 0;
-  let outIndex = 0;
-
+  let idx = 0;
   document.querySelectorAll('.dot').forEach(d => {
     const id = d.dataset.id;
     const isSel = id === roleId;
     const isFocused = focusIds.has(id);
-    const isIncoming = incoming.includes(id);
-    const isOutgoing = outgoing.includes(id);
 
     d.classList.toggle('sel', isSel);
     d.classList.toggle('related', !isSel && isFocused);
-    d.classList.toggle('show-label', isFocused);
+    d.classList.toggle('show-label', false);
     d.classList.toggle('dimmed', !isFocused);
 
     d.classList.remove('cascade-1', 'cascade-2');
-
-    if (isIncoming) {
-      d.classList.add(inIndex % 2 === 0 ? 'cascade-1' : 'cascade-2');
-      setLabelClass(d, 'label-left');
-      inIndex++;
-    } else if (isOutgoing) {
-      d.classList.add(outIndex % 2 === 0 ? 'cascade-1' : 'cascade-2');
-      setLabelClass(d, 'label-right');
-      outIndex++;
-    } else if (isSel) {
-      setLabelClass(d, 'label-center');
+    if (!isSel && isFocused) {
+      d.classList.add(idx % 2 === 0 ? 'cascade-1' : 'cascade-2');
+      idx++;
     }
   });
+
+  renderFocusLabels(roleId);
 }
 
 function renderPathList(role) {
-  const displayConnections = getRenderableConnections(role);
-  if (!displayConnections.length) {
+  const incomingIds = getIncomingIds(role.id).filter(id => id !== role.id);
+  const outgoingIds = getOutgoingIds(role.id).filter(id => id !== role.id);
+
+  const incomingHTML = incomingIds.length
+    ? `
+      <div style="margin-bottom:10px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--label4);margin-bottom:4px;">
+          Incoming paths
+        </div>
+        <ul class="plist">
+          ${incomingIds.map(id => {
+            const sourceRole = roleById.get(id);
+            if (!sourceRole) return '';
+            return `
+              <li class="link" onclick="openPanelById(${JSON.stringify(id)})">
+                <span class="path-arrow">→</span>
+                <span class="path-target">
+                  <span>${escapeHTML(sourceRole.title)}</span>
+                  <span style="opacity:.78">to ${escapeHTML(role.title)}</span>
+                </span>
+              </li>
+            `;
+          }).join('')}
+        </ul>
+      </div>
+    `
+    : '';
+
+  const outgoingHTML = outgoingIds.length
+    ? `
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--label4);margin-bottom:4px;">
+          Outgoing paths
+        </div>
+        <ul class="plist">
+          ${outgoingIds.map(id => {
+            const targetRole = roleById.get(id);
+            if (!targetRole) return '';
+            return `
+              <li class="link" onclick="openPanelById(${JSON.stringify(id)})">
+                <span class="path-arrow">→</span>
+                <span class="path-target">
+                  <span>${escapeHTML(role.title)}</span>
+                  <span style="opacity:.78">to ${escapeHTML(targetRole.title)}</span>
+                </span>
+              </li>
+            `;
+          }).join('')}
+        </ul>
+      </div>
+    `
+    : '';
+
+  if (!incomingHTML && !outgoingHTML) {
     return '<p style="font-size:13px;color:var(--label3)">No direct paths listed</p>';
   }
 
-  return `<ul class="plist">${
-    displayConnections.map(id => {
-      const cr = roleById.get(id);
-      if (!cr) return '';
-      return `
-        <li class="link" onclick="openPanelById(${JSON.stringify(id)})">
-          <span class="path-arrow">→</span>
-          <span class="path-target">
-            <span>${escapeHTML(role.title)}</span>
-            <span style="opacity:.78">to ${escapeHTML(cr.title)}</span>
-          </span>
-        </li>
-      `;
-    }).join('')
-  }</ul>`;
+  return incomingHTML + outgoingHTML;
 }
 
 function openPanel(role) {
@@ -1259,7 +1441,7 @@ function renderPanel(role) {
       ${skillsHTML}
     </div>
     <div class="prow">
-      <div class="prow-label">Career paths from here</div>
+      <div class="prow-label">Career paths</div>
       ${renderPathList(role)}
     </div>
   `;
@@ -1275,6 +1457,7 @@ function closePanel(resetActive = true) {
   document.getElementById('panel').classList.remove('open');
   document.getElementById('wheelWrap').classList.remove('focus-mode');
   clearNodeClasses();
+  clearFocusLabels();
   updateNodePositions(basePositions);
   updateEdgesGeometry(basePositions);
   if (resetActive) activeRoleId = null;
@@ -1282,22 +1465,32 @@ function closePanel(resetActive = true) {
 
 function doFilter() {
   const s = filt.search.toLowerCase();
+  const catNorm = normalizeFilterValue(filt.category);
+
   filtered = roles.filter(r => {
     if (filt.level !== 'all' && r.level !== filt.level) return false;
-    if (filt.category !== 'all' && r.category !== filt.category) return false;
+
+    if (catNorm !== 'all' && normalizeFilterValue(r.category) !== catNorm) return false;
+
     if (s) {
       const hay = `${r.title || ''} ${r.description || ''}`.toLowerCase();
       if (!hay.includes(s)) return false;
     }
     return true;
   });
+
   layout();
 }
 
 function setF(type, val) {
   filt[type] = val;
-  document.querySelectorAll(`[data-f="${type}"]`).forEach(e => e.classList.remove('on'));
-  document.querySelector(`[data-f="${type}"][data-v="${CSS.escape(val)}"]`)?.classList.add('on');
+
+  document.querySelectorAll(`[data-f="${type}"]`).forEach(e => {
+    const rowVal = normalizeFilterValue(e.dataset.v);
+    const selectedVal = normalizeFilterValue(val);
+    e.classList.toggle('on', rowVal === selectedVal);
+  });
+
   doFilter();
 }
 
