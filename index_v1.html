@@ -1,0 +1,821 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Metro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --blue: #007AFF;
+            --orange: #FF9500;
+            --red: #FF3B30;
+            --gray-1: #F5F5F7;
+            --gray-2: #E5E5EA;
+            --gray-3: #D1D1D6;
+            --gray-4: #8E8E93;
+            --text: #1D1D1F;
+            --text-light: #86868B;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: var(--gray-1);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        .header-title {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.41px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 6px 12px;
+            border: none;
+            background: var(--gray-2);
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .search-input:focus {
+            width: 280px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .filter-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--gray-2);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: var(--gray-3);
+        }
+
+        .filter-btn.active {
+            background: var(--blue);
+        }
+
+        .map-container {
+            margin-top: 44px;
+            padding: 60px;
+            min-height: calc(100vh - 44px);
+            position: relative;
+            background: white;
+        }
+
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+            background-size: 80px 80px;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .level-zone {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-top: 1px solid var(--gray-2);
+        }
+
+        .level-label {
+            position: absolute;
+            left: 60px;
+            top: -12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: white;
+            padding: 0 8px;
+        }
+
+        .metro-station {
+            position: absolute;
+            cursor: pointer;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .station-node {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .metro-station:hover .station-node {
+            transform: scale(2);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+
+        .metro-station.selected .station-node {
+            transform: scale(2.5);
+            box-shadow: 0 0 0 10px rgba(0, 122, 255, 0.25);
+        }
+
+        .station-label {
+            position: absolute;
+            white-space: nowrap;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            background: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            margin-top: -36px;
+            border: 0.5px solid rgba(0,0,0,0.05);
+        }
+
+        .metro-station:hover .station-label,
+        .metro-station.selected .station-label {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+
+        .station-entry .station-node { background: var(--blue); }
+        .station-mid .station-node { background: var(--orange); }
+        .station-senior .station-node { background: var(--red); }
+
+        .metro-line {
+            stroke-width: 3;
+            fill: none;
+            opacity: 0.35;
+            transition: all 0.4s;
+            stroke-linecap: round;
+        }
+
+        .metro-line.highlighted {
+            stroke-width: 5;
+            opacity: 0.95;
+        }
+
+        .line-entry { stroke: var(--blue); }
+        .line-mid { stroke: var(--orange); }
+        .line-senior { stroke: var(--red); }
+
+        .skill-bridge {
+            position: absolute;
+            background: rgba(90, 200, 250, 0.2);
+            border: 1.5px solid var(--blue);
+            border-radius: 12px;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--blue);
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 20;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+        }
+
+        .details-panel {
+            position: fixed;
+            top: 44px;
+            right: -420px;
+            width: 380px;
+            height: calc(100vh - 44px);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: saturate(180%) blur(20px);
+            box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+            padding: 32px;
+            overflow-y: auto;
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+            border-left: 0.5px solid rgba(0,0,0,0.1);
+        }
+
+        .details-panel.open {
+            right: 0;
+        }
+
+        .details-panel h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 32px;
+            letter-spacing: -0.5px;
+        }
+
+        .detail-section {
+            margin-bottom: 32px;
+        }
+
+        .detail-section h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .detail-section p {
+            font-size: 17px;
+            line-height: 1.5;
+        }
+
+        .detail-section ul {
+            list-style: none;
+        }
+
+        .detail-section li {
+            font-size: 17px;
+            color: var(--text-light);
+            padding: 10px 0;
+            border-bottom: 0.5px solid var(--gray-2);
+        }
+
+        .detail-section li:last-child {
+            border-bottom: none;
+        }
+
+        .detail-section li[onclick] {
+            color: var(--blue);
+            cursor: pointer;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: var(--gray-2);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filter-panel {
+            position: fixed;
+            top: 44px;
+            right: -320px;
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: saturate(180%) blur(20px);
+            box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+            padding: 24px;
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 998;
+            border-left: 0.5px solid rgba(0,0,0,0.1);
+        }
+
+        .filter-panel.open {
+            right: 0;
+        }
+
+        .filter-group {
+            margin-bottom: 32px;
+        }
+
+        .filter-group-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .filter-option {
+            padding: 12px 0;
+            font-size: 17px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .filter-option:hover {
+            color: var(--blue);
+        }
+
+        .filter-option.active {
+            color: var(--blue);
+            font-weight: 600;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 2.5px solid var(--gray-2);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--red);
+        }
+
+        .error-state button {
+            margin-top: 16px;
+            padding: 12px 24px;
+            background: var(--blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">Career Metro</div>
+        <div class="header-actions">
+            <input type="text" class="search-input" placeholder="Search..." id="searchInput">
+            <button class="filter-btn" id="filterButton" onclick="toggleFilters()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="map-container" id="mapContainer">
+        <div class="grid-overlay"></div>
+        <div id="loadingState" class="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading map...</div>
+        </div>
+        <div id="errorState" class="error-state" style="display: none;">
+            <div>Unable to load data</div>
+            <button onclick="loadData()">Try Again</button>
+        </div>
+        <svg id="metroSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
+        <div id="metroMap" style="position: relative; width: 100%; min-height: 1400px;"></div>
+    </div>
+
+    <div class="filter-panel" id="filterPanel">
+        <div class="filter-group">
+            <div class="filter-group-title">Level</div>
+            <div class="filter-option active" data-filter="level" data-value="all" onclick="setFilter('level', 'all')">All</div>
+            <div class="filter-option" data-filter="level" data-value="Entry" onclick="setFilter('level', 'Entry')">Entry</div>
+            <div class="filter-option" data-filter="level" data-value="Mid-Level" onclick="setFilter('level', 'Mid-Level')">Mid-Level</div>
+            <div class="filter-option" data-filter="level" data-value="Senior" onclick="setFilter('level', 'Senior')">Senior</div>
+        </div>
+        <div class="filter-group">
+            <div class="filter-group-title">Category</div>
+            <div class="filter-option active" data-filter="category" data-value="all" onclick="setFilter('category', 'all')">All</div>
+            <div id="categoryFilters"></div>
+        </div>
+    </div>
+
+    <div class="details-panel" id="detailsPanel">
+        <button class="close-btn" onclick="closeDetails()">×</button>
+        <div id="detailsContent"></div>
+    </div>
+
+    <script>
+        const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?output=csv';
+        
+        let roles = [];
+        let filteredRoles = [];
+        let activeFilters = { level: 'all', category: 'all', search: '' };
+        let stationPositions = {};
+
+        async function loadData() {
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+            const metroMap = document.getElementById('metroMap');
+            const metroSvg = document.getElementById('metroSvg');
+            
+            loadingState.style.display = 'block';
+            errorState.style.display = 'none';
+            metroMap.style.display = 'none';
+            metroSvg.style.display = 'none';
+            
+            try {
+                const response = await fetch(GOOGLE_SHEETS_URL);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const csvText = await response.text();
+                
+                roles = parseCSV(csvText);
+                console.log('Loaded roles:', roles.length);
+                
+                if (roles.length === 0) {
+                    throw new Error('No data found');
+                }
+                
+                filteredRoles = [...roles];
+                updateCategoryFilters();
+                
+                loadingState.style.display = 'none';
+                metroMap.style.display = 'block';
+                metroSvg.style.display = 'block';
+                
+                // Ensure layout happens after render
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        layoutMetroMap();
+                    }, 50);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+            }
+        }
+
+        function updateCategoryFilters() {
+            const categories = [...new Set(roles.map(r => r.category))].sort();
+            const container = document.getElementById('categoryFilters');
+            container.innerHTML = categories.map(cat => 
+                `<div class="filter-option" data-filter="category" data-value="${cat}" onclick="setFilter('category', '${cat}')">${cat}</div>`
+            ).join('');
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',');
+            const roles = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let char of lines[i]) {
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+                
+                const role = {};
+                headers.forEach((header, idx) => {
+                    role[header] = values[idx] || '';
+                });
+                
+                if (role.connections) {
+                    role.connections = role.connections.split(',').map(c => c.trim()).filter(c => c);
+                } else {
+                    role.connections = [];
+                }
+                
+                if (role.skills) {
+                    role.skills = role.skills.split(',').map(s => s.trim()).filter(s => s);
+                } else {
+                    role.skills = [];
+                }
+                
+                if (role.id && role.title) {
+                    roles.push(role);
+                }
+            }
+            
+            return roles;
+        }
+
+        function getSharedSkills(role1, role2) {
+            if (!role1.skills || !role2.skills) return [];
+            return role1.skills.filter(skill => role2.skills.includes(skill));
+        }
+
+        function layoutMetroMap() {
+            const metroMap = document.getElementById('metroMap');
+            const metroSvg = document.getElementById('metroSvg');
+            
+            if (!metroMap || !metroSvg) {
+                console.error('Map containers not found');
+                return;
+            }
+            
+            metroMap.innerHTML = '';
+            metroSvg.innerHTML = '';
+            stationPositions = {};
+            
+            if (filteredRoles.length === 0) {
+                metroMap.innerHTML = '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-light);">No stations found</div>';
+                return;
+            }
+            
+            const levelOrder = { 'Entry': 0, 'Mid-Level': 1, 'Senior': 2 };
+            const levels = {};
+            filteredRoles.forEach(role => {
+                if (!levels[role.level]) levels[role.level] = [];
+                levels[role.level].push(role);
+            });
+            
+            // Get container dimensions
+            const rect = metroMap.getBoundingClientRect();
+            const containerWidth = rect.width || window.innerWidth - 120;
+            const containerHeight = Math.max(1400, window.innerHeight - 164);
+            const levelHeight = containerHeight / 3;
+            
+            console.log('Container:', containerWidth, 'x', containerHeight);
+            console.log('Levels:', Object.keys(levels).map(l => `${l}: ${levels[l].length}`).join(', '));
+            
+            // Create level zones
+            Object.keys(levels).sort((a, b) => levelOrder[a] - levelOrder[b]).forEach((level, idx) => {
+                if (idx > 0) {
+                    const zone = document.createElement('div');
+                    zone.className = 'level-zone';
+                    zone.style.top = (idx * levelHeight) + 'px';
+                    const label = document.createElement('div');
+                    label.className = 'level-label';
+                    label.textContent = level;
+                    zone.appendChild(label);
+                    metroMap.appendChild(zone);
+                }
+            });
+            
+            // Position stations
+            Object.keys(levels).sort((a, b) => levelOrder[a] - levelOrder[b]).forEach((level, levelIdx) => {
+                const levelRoles = levels[level];
+                const baseY = levelIdx * levelHeight + levelHeight / 2;
+                const startX = 150;
+                const endX = containerWidth - 150;
+                const availableWidth = endX - startX;
+                const spacing = levelRoles.length > 1 ? availableWidth / (levelRoles.length - 1) : 0;
+                
+                levelRoles.forEach((role, idx) => {
+                    const x = startX + (idx * spacing);
+                    const y = baseY;
+                    
+                    stationPositions[role.id] = { x, y, role };
+                    
+                    const station = document.createElement('div');
+                    station.className = `metro-station station-${level.toLowerCase().replace('-', '')}`;
+                    station.dataset.id = role.id;
+                    station.style.left = x + 'px';
+                    station.style.top = y + 'px';
+                    
+                    station.innerHTML = `
+                        <div class="station-node"></div>
+                        <div class="station-label">${role.title}</div>
+                    `;
+                    
+                    station.addEventListener('click', () => showDetails(role));
+                    metroMap.appendChild(station);
+                });
+            });
+            
+            console.log('Stations positioned:', Object.keys(stationPositions).length);
+            
+            // Draw lines
+            let lineCount = 0;
+            filteredRoles.forEach(role => {
+                if (!role.connections || role.connections.length === 0) return;
+                
+                const sourcePos = stationPositions[role.id];
+                if (!sourcePos) return;
+                
+                role.connections.forEach(connId => {
+                    const targetPos = stationPositions[connId];
+                    if (!targetPos) return;
+                    
+                    const targetRole = roles.find(r => r.id === connId);
+                    if (!targetRole) return;
+                    
+                    const sourceLevel = levelOrder[role.level] || 0;
+                    const targetLevel = levelOrder[targetRole.level] || 0;
+                    const isProgressive = targetLevel > sourceLevel;
+                    const levelClass = isProgressive ? targetRole.level.toLowerCase().replace('-', '') : role.level.toLowerCase().replace('-', '');
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', sourcePos.x);
+                    line.setAttribute('y1', sourcePos.y);
+                    line.setAttribute('x2', targetPos.x);
+                    line.setAttribute('y2', targetPos.y);
+                    line.setAttribute('class', `metro-line line-${levelClass}`);
+                    line.dataset.source = role.id;
+                    line.dataset.target = connId;
+                    line.style.stroke = levelClass === 'entry' ? 'var(--blue)' : (levelClass === 'midlevel' ? 'var(--orange)' : 'var(--red)');
+                    metroSvg.appendChild(line);
+                    lineCount++;
+                    
+                    // Skill bridges
+                    const sharedSkills = getSharedSkills(role, targetRole);
+                    if (sharedSkills.length > 0) {
+                        const midX = (sourcePos.x + targetPos.x) / 2;
+                        const midY = (sourcePos.y + targetPos.y) / 2 - 35;
+                        
+                        const skillBridge = document.createElement('div');
+                        skillBridge.className = 'skill-bridge';
+                        skillBridge.textContent = sharedSkills[0];
+                        skillBridge.style.left = midX + 'px';
+                        skillBridge.style.top = midY + 'px';
+                        skillBridge.title = `Shared: ${sharedSkills.join(', ')}`;
+                        metroMap.appendChild(skillBridge);
+                    }
+                });
+            });
+            
+            console.log('Lines drawn:', lineCount);
+        }
+
+        function showDetails(role) {
+            const panel = document.getElementById('detailsPanel');
+            const content = document.getElementById('detailsContent');
+            
+            document.querySelectorAll('.metro-line').forEach(line => {
+                line.classList.remove('highlighted');
+                if (line.dataset.source === role.id || line.dataset.target === role.id) {
+                    line.classList.add('highlighted');
+                }
+            });
+            
+            document.querySelectorAll('.metro-station').forEach(station => {
+                station.classList.remove('selected');
+                if (station.dataset.id === role.id) {
+                    station.classList.add('selected');
+                }
+            });
+            
+            content.innerHTML = `
+                <h2>${role.title}</h2>
+                <div class="detail-section">
+                    <h3>Category & Level</h3>
+                    <p>${role.category} • ${role.level}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Salary Range</h3>
+                    <p>${role.salary}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Description</h3>
+                    <p>${role.description}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Education</h3>
+                    <p>${role.education}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Skills</h3>
+                    <ul>
+                        ${role.skills.map(skill => `<li>${skill}</li>`).join('')}
+                    </ul>
+                </div>
+                ${role.connections.length > 0 ? `
+                <div class="detail-section">
+                    <h3>Connections</h3>
+                    <ul>
+                        ${role.connections.map(connId => {
+                            const connRole = roles.find(r => r.id === connId);
+                            return connRole ? `<li onclick="showDetails(roles.find(r => r.id === '${connId}'))">${connRole.title}</li>` : '';
+                        }).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+            `;
+            
+            panel.classList.add('open');
+        }
+
+        function filterRoles() {
+            filteredRoles = roles.filter(role => {
+                if (activeFilters.level !== 'all' && role.level !== activeFilters.level) return false;
+                if (activeFilters.category !== 'all' && role.category !== activeFilters.category) return false;
+                if (activeFilters.search && !role.title.toLowerCase().includes(activeFilters.search.toLowerCase()) && 
+                    !role.description.toLowerCase().includes(activeFilters.search.toLowerCase())) return false;
+                return true;
+            });
+            
+            layoutMetroMap();
+        }
+
+        function setFilter(type, value) {
+            activeFilters[type] = value;
+            
+            document.querySelectorAll(`[data-filter="${type}"]`).forEach(el => {
+                el.classList.remove('active');
+            });
+            const activeEl = document.querySelector(`[data-filter="${type}"][data-value="${value}"]`);
+            if (activeEl) activeEl.classList.add('active');
+            
+            filterRoles();
+        }
+
+        function toggleFilters() {
+            const panel = document.getElementById('filterPanel');
+            const button = document.getElementById('filterButton');
+            panel.classList.toggle('open');
+            button.classList.toggle('active');
+        }
+
+        function closeDetails() {
+            document.getElementById('detailsPanel').classList.remove('open');
+            document.querySelectorAll('.metro-station').forEach(s => s.classList.remove('selected'));
+            document.querySelectorAll('.metro-line').forEach(l => l.classList.remove('highlighted'));
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            activeFilters.search = e.target.value;
+            filterRoles();
+        });
+
+        window.roles = roles;
+        window.showDetails = showDetails;
+        window.loadData = loadData;
+        window.setFilter = setFilter;
+
+        // Load on page load
+        window.addEventListener('load', () => {
+            loadData();
+        });
+
+        // Handle resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (filteredRoles.length > 0) {
+                    layoutMetroMap();
+                }
+            }, 250);
+        });
+    </script>
+</body>
+</html> -->

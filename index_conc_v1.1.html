@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Metro — Concentric</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --entry: #22d3ee;
+            --entry-dim: rgba(34, 211, 238, 0.35);
+            --mid: #fbbf24;
+            --mid-dim: rgba(251, 191, 36, 0.35);
+            --senior: #f472b6;
+            --senior-dim: rgba(244, 114, 182, 0.35);
+            --bg-deep: #0a0a0f;
+            --bg-mid: #12121a;
+            --surface: rgba(255, 255, 255, 0.04);
+            --surface-hover: rgba(255, 255, 255, 0.08);
+            --text: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --border: rgba(255, 255, 255, 0.06);
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Radial gradient + noise feel */
+        .page-bg {
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse 120% 80% at 50% 50%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse 80% 120% at 50% 50%, rgba(244, 114, 182, 0.04) 0%, transparent 50%),
+                var(--bg-deep);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 64px 64px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 220px;
+            padding: 10px 16px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text);
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-input:focus {
+            width: 280px;
+            border-color: var(--entry);
+            box-shadow: 0 0 0 3px var(--entry-dim);
+        }
+
+        .filter-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s ease;
+            color: var(--text-muted);
+        }
+
+        .filter-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text);
+        }
+
+        .filter-btn.active {
+            border-color: var(--entry);
+            color: var(--entry);
+            box-shadow: 0 0 0 2px var(--entry-dim);
+        }
+
+        .map-wrapper {
+            position: relative;
+            margin-top: 56px;
+            min-height: calc(100vh - 56px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            z-index: 1;
+        }
+
+        .concentric-container {
+            position: relative;
+            width: min(90vmin, 920px);
+            height: min(90vmin, 920px);
+            max-width: 100%;
+        }
+
+        .rings-svg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .ring-circle {
+            fill: none;
+            stroke-width: 1;
+            stroke-dasharray: 4 8;
+            opacity: 0.5;
+            transform-origin: center;
+            animation: ringPulse 8s ease-in-out infinite;
+        }
+
+        .ring-circle.entry-ring { stroke: var(--entry); }
+        .ring-circle.mid-ring { stroke: var(--mid); animation-delay: -2s; }
+        .ring-circle.senior-ring { stroke: var(--senior); animation-delay: -4s; }
+
+        @keyframes ringPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.7; }
+        }
+
+        .ring-label {
+            position: absolute;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        .ring-label.entry-label { color: var(--entry); }
+        .ring-label.mid-label { color: var(--mid); }
+        .ring-label.senior-label { color: var(--senior); }
+
+        .metro-station {
+            position: absolute;
+            cursor: pointer;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+        }
+
+        .metro-station:hover {
+            transform: translate(-50%, -50%) scale(1.25);
+            filter: drop-shadow(0 0 12px currentColor);
+        }
+
+        .metro-station.selected {
+            transform: translate(-50%, -50%) scale(1.35);
+            z-index: 20;
+        }
+
+        .station-node {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid var(--bg-deep);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .metro-station:hover .station-node,
+        .metro-station.selected .station-node {
+            box-shadow: 0 0 20px 4px currentColor;
+        }
+
+        .station-entry .station-node { background: var(--entry); color: var(--entry); }
+        .station-mid .station-node { background: var(--mid); color: var(--mid); }
+        .station-senior .station-node { background: var(--senior); color: var(--senior); }
+
+        .station-label {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) translateY(-32px) scale(0.9);
+            white-space: nowrap;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text);
+            background: rgba(10, 10, 15, 0.95);
+            padding: 8px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .metro-station:hover .station-label,
+        .metro-station.selected .station-label {
+            opacity: 1;
+            transform: translate(-50%, -50%) translateY(-36px) scale(1);
+        }
+
+        .metro-line {
+            fill: none;
+            stroke-width: 2;
+            opacity: 0.25;
+            transition: opacity 0.4s ease, stroke-width 0.3s ease;
+            stroke-linecap: round;
+        }
+
+        .metro-line.highlighted {
+            opacity: 0.85;
+            stroke-width: 2.5;
+        }
+
+        .line-entry { stroke: var(--entry); }
+        .line-mid { stroke: var(--mid); }
+        .line-senior { stroke: var(--senior); }
+
+        .skill-bridge {
+            position: absolute;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 5;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .details-panel {
+            position: fixed;
+            top: 56px;
+            right: -440px;
+            width: 400px;
+            height: calc(100vh - 56px);
+            background: rgba(18, 18, 26, 0.92);
+            backdrop-filter: saturate(180%) blur(24px);
+            border-left: 1px solid var(--border);
+            padding: 32px;
+            overflow-y: auto;
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+            box-shadow: -16px 0 48px rgba(0,0,0,0.3);
+        }
+
+        .details-panel.open {
+            right: 0;
+        }
+
+        .details-panel h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+            line-height: 1.3;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section h3 {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .detail-section p,
+        .detail-section li {
+            font-size: 15px;
+            line-height: 1.55;
+            color: var(--text);
+        }
+
+        .detail-section ul {
+            list-style: none;
+        }
+
+        .detail-section li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-section li:last-child {
+            border-bottom: none;
+        }
+
+        .detail-section li[onclick] {
+            color: var(--entry);
+            cursor: pointer;
+        }
+
+        .detail-section li[onclick]:hover {
+            text-decoration: underline;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text);
+        }
+
+        .filter-panel {
+            position: fixed;
+            top: 56px;
+            right: -320px;
+            width: 280px;
+            background: rgba(18, 18, 26, 0.95);
+            backdrop-filter: saturate(180%) blur(24px);
+            border-left: 1px solid var(--border);
+            padding: 24px;
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 998;
+            box-shadow: -16px 0 48px rgba(0,0,0,0.3);
+        }
+
+        .filter-panel.open {
+            right: 0;
+        }
+
+        .filter-group-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+
+        .filter-option {
+            padding: 10px 0;
+            font-size: 15px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            color: var(--text-muted);
+        }
+
+        .filter-option:hover {
+            color: var(--text);
+        }
+
+        .filter-option.active {
+            color: var(--entry);
+            font-weight: 600;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+            z-index: 5;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--entry);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--senior);
+            z-index: 5;
+        }
+
+        .error-state button {
+            margin-top: 16px;
+            padding: 12px 24px;
+            background: var(--entry);
+            color: var(--bg-deep);
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 24px;
+            padding: 12px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.entry { background: var(--entry); }
+        .legend-dot.mid { background: var(--mid); }
+        .legend-dot.senior { background: var(--senior); }
+    </style>
+</head>
+<body>
+    <div class="page-bg"></div>
+    <div class="grid-bg"></div>
+
+    <div class="header">
+        <div class="header-title">Career Metro</div>
+        <div class="header-actions">
+            <input type="text" class="search-input" placeholder="Search roles…" id="searchInput">
+            <button class="filter-btn" id="filterButton" onclick="toggleFilters()">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M2 4h12M4 8h8M6 12h4"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="map-wrapper" id="mapContainer">
+        <div id="loadingState" class="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading map…</div>
+        </div>
+        <div id="errorState" class="error-state" style="display: none;">
+            <div>Unable to load data</div>
+            <button onclick="loadData()">Try Again</button>
+        </div>
+
+        <div class="concentric-container" id="concentricContainer" style="display: none;">
+            <svg class="rings-svg" id="ringsSvg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+            <div id="metroStations"></div>
+            <svg id="linesSvg" class="rings-svg" style="pointer-events: none;" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="legend">
+                <span class="legend-item"><span class="legend-dot entry"></span> Entry</span>
+                <span class="legend-item"><span class="legend-dot mid"></span> Mid-Level</span>
+                <span class="legend-item"><span class="legend-dot senior"></span> Senior</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-panel" id="filterPanel">
+        <div class="filter-group">
+            <div class="filter-group-title">Level</div>
+            <div class="filter-option active" data-filter="level" data-value="all" onclick="setFilter('level', 'all')">All</div>
+            <div class="filter-option" data-filter="level" data-value="Entry" onclick="setFilter('level', 'Entry')">Entry</div>
+            <div class="filter-option" data-filter="level" data-value="Mid-Level" onclick="setFilter('level', 'Mid-Level')">Mid-Level</div>
+            <div class="filter-option" data-filter="level" data-value="Senior" onclick="setFilter('level', 'Senior')">Senior</div>
+        </div>
+        <div class="filter-group">
+            <div class="filter-group-title">Category</div>
+            <div class="filter-option active" data-filter="category" data-value="all" onclick="setFilter('category', 'all')">All</div>
+            <div id="categoryFilters"></div>
+        </div>
+    </div>
+
+    <div class="details-panel" id="detailsPanel">
+        <button class="close-btn" onclick="closeDetails()">×</button>
+        <div id="detailsContent"></div>
+    </div>
+
+    <script>
+        const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?output=csv';
+
+        let roles = [];
+        let filteredRoles = [];
+        let activeFilters = { level: 'all', category: 'all', search: '' };
+        let stationPositions = {};
+        let viewBox = { cx: 50, cy: 50, size: 100 };
+        let radii = { entry: 18, mid: 35, senior: 48 };
+
+        async function loadData() {
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+            const concentricContainer = document.getElementById('concentricContainer');
+
+            loadingState.style.display = 'block';
+            errorState.style.display = 'none';
+            concentricContainer.style.display = 'none';
+
+            try {
+                const response = await fetch(GOOGLE_SHEETS_URL);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const csvText = await response.text();
+
+                roles = parseCSV(csvText);
+                if (roles.length === 0) throw new Error('No data found');
+
+                filteredRoles = [...roles];
+                updateCategoryFilters();
+
+                loadingState.style.display = 'none';
+                concentricContainer.style.display = 'block';
+
+                requestAnimationFrame(() => {
+                    setTimeout(() => layoutConcentric(), 50);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+            }
+        }
+
+        function updateCategoryFilters() {
+            const categories = [...new Set(roles.map(r => r.category))].sort();
+            const container = document.getElementById('categoryFilters');
+            container.innerHTML = categories.map(cat =>
+                `<div class="filter-option" data-filter="category" data-value="${cat}" onclick="setFilter('category', '${cat}')">${cat}</div>`
+            ).join('');
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            if (lines.length < 2) return [];
+
+            const headers = lines[0].split(',');
+            const roles = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+
+                for (let char of lines[i]) {
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+
+                const role = {};
+                headers.forEach((header, idx) => {
+                    role[header] = values[idx] || '';
+                });
+
+                if (role.connections) {
+                    role.connections = role.connections.split(',').map(c => c.trim()).filter(c => c);
+                } else {
+                    role.connections = [];
+                }
+
+                if (role.skills) {
+                    role.skills = role.skills.split(',').map(s => s.trim()).filter(s => s);
+                } else {
+                    role.skills = [];
+                }
+
+                if (role.id && role.title) {
+                    roles.push(role);
+                }
+            }
+
+            return roles;
+        }
+
+        function getSharedSkills(role1, role2) {
+            if (!role1.skills || !role2.skills) return [];
+            return role1.skills.filter(skill => role2.skills.includes(skill));
+        }
+
+        function layoutConcentric() {
+            const container = document.getElementById('concentricContainer');
+            const stationsEl = document.getElementById('metroStations');
+            const ringsSvg = document.getElementById('ringsSvg');
+            const linesSvg = document.getElementById('linesSvg');
+
+            if (!container || !stationsEl) return;
+
+            stationsEl.innerHTML = '';
+            ringsSvg.innerHTML = '';
+            linesSvg.innerHTML = '';
+            stationPositions = {};
+
+            if (filteredRoles.length === 0) {
+                stationsEl.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--text-muted);">No roles match filters</div>';
+                return;
+            }
+
+            const levelOrder = { 'Entry': 0, 'Mid-Level': 1, 'Senior': 2 };
+            const levels = { Entry: [], 'Mid-Level': [], Senior: [] };
+            filteredRoles.forEach(role => {
+                if (levels[role.level]) levels[role.level].push(role);
+            });
+
+            const cx = viewBox.cx, cy = viewBox.cy;
+
+            // Draw rings (entry inner, mid middle, senior outer)
+            ['entry', 'mid', 'senior'].forEach((key, i) => {
+                const levelKey = key === 'entry' ? 'Entry' : (key === 'mid' ? 'Mid-Level' : 'Senior');
+                if (levels[levelKey].length === 0) return;
+                const r = radii[key];
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', cy);
+                circle.setAttribute('r', r);
+                circle.setAttribute('class', `ring-circle ${key}-ring`);
+                ringsSvg.appendChild(circle);
+            });
+
+            // Position stations on concentric rings (polar coords → % for viewBox)
+            ['Entry', 'Mid-Level', 'Senior'].forEach(level => {
+                const levelRoles = levels[level];
+                if (!levelRoles || levelRoles.length === 0) return;
+
+                const key = level === 'Entry' ? 'entry' : (level === 'Mid-Level' ? 'mid' : 'senior');
+                const radius = radii[key];
+                const step = (2 * Math.PI) / levelRoles.length;
+                const offset = Math.PI / 2;
+
+                levelRoles.forEach((role, idx) => {
+                    const angle = offset + idx * step;
+                    const x = cx + radius * Math.cos(angle);
+                    const y = cy + radius * Math.sin(angle);
+
+                    stationPositions[role.id] = { x, y, role };
+
+                    const station = document.createElement('div');
+                    station.className = `metro-station station-${key}`;
+                    station.dataset.id = role.id;
+                    station.style.left = x + '%';
+                    station.style.top = y + '%';
+
+                    station.innerHTML = `
+                        <div class="station-node"></div>
+                        <div class="station-label">${role.title}</div>
+                    `;
+
+                    station.addEventListener('click', () => showDetails(role));
+                    stationsEl.appendChild(station);
+                });
+            });
+
+            // Connection lines (in viewBox units)
+            const lineColors = { entry: 'var(--entry)', mid: 'var(--mid)', senior: 'var(--senior)' };
+            filteredRoles.forEach(role => {
+                if (!role.connections || role.connections.length === 0) return;
+
+                const sourcePos = stationPositions[role.id];
+                if (!sourcePos) return;
+
+                role.connections.forEach(connId => {
+                    const targetPos = stationPositions[connId];
+                    if (!targetPos) return;
+
+                    const targetRole = roles.find(r => r.id === connId);
+                    if (!targetRole) return;
+
+                    const levelClass = targetRole.level === 'Entry' ? 'entry' : (targetRole.level === 'Mid-Level' ? 'mid' : 'senior');
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', sourcePos.x);
+                    line.setAttribute('y1', sourcePos.y);
+                    line.setAttribute('x2', targetPos.x);
+                    line.setAttribute('y2', targetPos.y);
+                    line.setAttribute('class', `metro-line line-${levelClass}`);
+                    line.dataset.source = role.id;
+                    line.dataset.target = connId;
+                    line.style.stroke = lineColors[levelClass] || lineColors.entry;
+                    linesSvg.appendChild(line);
+
+                    const sharedSkills = getSharedSkills(role, targetRole);
+                    if (sharedSkills.length > 0) {
+                        const midX = (sourcePos.x + targetPos.x) / 2;
+                        const midY = (sourcePos.y + targetPos.y) / 2;
+                        const skillBridge = document.createElement('div');
+                        skillBridge.className = 'skill-bridge';
+                        skillBridge.textContent = sharedSkills[0];
+                        skillBridge.style.left = midX + '%';
+                        skillBridge.style.top = midY + '%';
+                        skillBridge.title = `Shared: ${sharedSkills.join(', ')}`;
+                        stationsEl.appendChild(skillBridge);
+                    }
+                });
+            });
+        }
+
+        function showDetails(role) {
+            const panel = document.getElementById('detailsPanel');
+            const content = document.getElementById('detailsContent');
+
+            document.querySelectorAll('#linesSvg .metro-line').forEach(line => {
+                line.classList.remove('highlighted');
+                if (line.dataset.source === role.id || line.dataset.target === role.id) {
+                    line.classList.add('highlighted');
+                }
+            });
+
+            document.querySelectorAll('.metro-station').forEach(station => {
+                station.classList.remove('selected');
+                if (station.dataset.id === role.id) {
+                    station.classList.add('selected');
+                }
+            });
+
+            content.innerHTML = `
+                <h2>${role.title}</h2>
+                <div class="detail-section">
+                    <h3>Category & Level</h3>
+                    <p>${role.category} • ${role.level}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Salary Range</h3>
+                    <p>${role.salary}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Description</h3>
+                    <p>${role.description}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Education</h3>
+                    <p>${role.education}</p>
+                </div>
+                <div class="detail-section">
+                    <h3>Skills</h3>
+                    <ul>
+                        ${(role.skills || []).map(skill => `<li>${skill}</li>`).join('')}
+                    </ul>
+                </div>
+                ${role.connections && role.connections.length > 0 ? `
+                <div class="detail-section">
+                    <h3>Connections</h3>
+                    <ul>
+                        ${role.connections.map(connId => {
+                            const connRole = roles.find(r => r.id === connId);
+                            return connRole ? `<li onclick="showDetails(roles.find(r => r.id === '${connId}'))">${connRole.title}</li>` : '';
+                        }).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+            `;
+
+            panel.classList.add('open');
+        }
+
+        function filterRoles() {
+            filteredRoles = roles.filter(role => {
+                if (activeFilters.level !== 'all' && role.level !== activeFilters.level) return false;
+                if (activeFilters.category !== 'all' && role.category !== activeFilters.category) return false;
+                if (activeFilters.search && !role.title.toLowerCase().includes(activeFilters.search.toLowerCase()) &&
+                    !(role.description || '').toLowerCase().includes(activeFilters.search.toLowerCase())) return false;
+                return true;
+            });
+
+            layoutConcentric();
+        }
+
+        function setFilter(type, value) {
+            activeFilters[type] = value;
+            document.querySelectorAll(`[data-filter="${type}"]`).forEach(el => el.classList.remove('active'));
+            const activeEl = document.querySelector(`[data-filter="${type}"][data-value="${value}"]`);
+            if (activeEl) activeEl.classList.add('active');
+            filterRoles();
+        }
+
+        function toggleFilters() {
+            document.getElementById('filterPanel').classList.toggle('open');
+            document.getElementById('filterButton').classList.toggle('active');
+        }
+
+        function closeDetails() {
+            document.getElementById('detailsPanel').classList.remove('open');
+            document.querySelectorAll('.metro-station').forEach(s => s.classList.remove('selected'));
+            document.querySelectorAll('#linesSvg .metro-line').forEach(l => l.classList.remove('highlighted'));
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            activeFilters.search = e.target.value;
+            filterRoles();
+        });
+
+        window.roles = roles;
+        window.showDetails = showDetails;
+        window.loadData = loadData;
+        window.setFilter = setFilter;
+
+        window.addEventListener('load', loadData);
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (filteredRoles.length > 0) layoutConcentric();
+            }, 250);
+        });
+    </script>
+</body>
+</html>
