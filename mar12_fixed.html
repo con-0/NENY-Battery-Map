@@ -484,26 +484,22 @@ body.dark .skill-trainings {
 .skill-trainings[hidden] { display:none; }
 
 .training-list {
-  list-style:none;
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
+  list-style: none;
+  padding-left: 0;
 }
+
 .training-item {
-  font-size:11px;
-  line-height:1.25;
-  color:var(--label3);
-  background:var(--glass);
-  border:0.5px solid var(--sep2);
-  border-radius:999px;
-  padding:2px 8px;
+  margin: 6px 0;
+  font-size: 13px;
 }
+
 .training-item a {
-  color:inherit;
-  text-decoration:none;
+  color: var(--accent);
+  text-decoration: none;
 }
+
 .training-item a:hover {
-  text-decoration:underline;
+  text-decoration: underline;
 }
 body.dark .training-item {
   color:#d6e6ff;
@@ -1519,48 +1515,36 @@ function skillKey(roleId, skill, idx) {
 
 function renderSkills(role) {
   const skills = role.skills || [];
-  if (!skills.length) return '<p>&mdash;</p>';
+  if (!skills.length) return '<p>—</p>';
 
   const chips = skills.map((skill, idx) => {
     const panelId = skillKey(role.id, skill, idx);
     return `
-      <button type="button" class="skill-chip skill-chip-btn" aria-expanded="false" aria-controls="${panelId}">${escapeHTML(skill)}</button>
+      <button type="button"
+        class="skill-chip skill-chip-btn"
+        aria-expanded="false"
+        aria-controls="${panelId}">
+        ${escapeHTML(skill)}
+      </button>
     `;
   }).join('');
 
   const trainings = skills.map((skill, idx) => {
+
     const panelId = skillKey(role.id, skill, idx);
-    const linkedBlock = role.trainingMap?.[skill] || {};
-    const linkedTrainings = linkedBlock.recommendations || [];
-    const mappedSkill = linkedBlock.mapped_skill || '';
-    const skillDepth = linkedBlock.skill_depth || '';
+    const linkedTrainings = role.trainingMap?.[skill]?.recommendations || [];
 
     const trainingHTML = linkedTrainings.length
-      ? linkedTrainings.map(training => {
-          const labelParts = [training.program, training.provider].filter(Boolean);
-          const label = labelParts.join(' · ');
-          const metaBits = [training.tier, mappedSkill, skillDepth].filter(Boolean);
-          const meta = metaBits.length
-            ? `<div class="training-meta">${escapeHTML(metaBits.join(' · '))}</div>`
-            : '';
-
-          if (training.url) {
-            return `
-              <li class="training-item">
-                <a href="${escapeHTML(training.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label || training.program || 'Training')}</a>
-                ${meta}
-              </li>
-            `;
-          }
-
-          return `
-            <li class="training-item">
-              <span>${escapeHTML(label || training.program || 'Training')}</span>
-              ${meta}
-            </li>
-          `;
-        }).join('')
-      : `<li class="training-item"><span>No linked training found yet</span></li>`;
+      ? linkedTrainings.map(t => `
+        <li class="training-item">
+          <a href="${escapeHTML(t.url || '#')}"
+             target="_blank"
+             rel="noopener noreferrer">
+            ${escapeHTML(t.program)}
+          </a>
+        </li>
+      `).join('')
+      : `<li class="training-item">No training available</li>`;
 
     return `
       <div id="${panelId}" class="skill-trainings" hidden>
@@ -1571,8 +1555,13 @@ function renderSkills(role) {
     `;
   }).join('');
 
-  return `<div class="skills-wrap">${chips}</div>${trainings}`;
+  return `
+    <div class="skills-wrap">${chips}</div>
+    ${trainings}
+  `;
 }
+
+ 
 
 function wireSkillButtons() {
   document.querySelectorAll('.skill-chip-btn').forEach(btn => {
