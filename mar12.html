@@ -448,6 +448,62 @@ body.dark .panel-badge.senior { background:rgba(189,208,255,0.12); border-color:
   background:var(--bg2); border:0.5px solid var(--sep);
   border-radius:6px; color:var(--label2);
 }
+.skill-item { width:100%; margin-bottom:6px; }
+.skill-item:last-child { margin-bottom:0; }
+.skill-chip-btn {
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--label2);
+  background:var(--bg2);
+  border:0.5px solid var(--sep);
+  border-radius:8px;
+  padding:7px 10px;
+  cursor:pointer;
+  transition:background 0.15s, border-color 0.15s, color 0.15s;
+}
+.skill-chip-btn::after {
+  content:'▾';
+  font-size:11px;
+  color:var(--label4);
+  transition:transform 0.2s ease;
+}
+.skill-chip-btn:hover { background:var(--bg3); }
+.skill-chip-btn[aria-expanded="true"] {
+  border-color:rgba(76,175,46,0.42);
+  color:var(--label);
+}
+.skill-chip-btn[aria-expanded="true"]::after { transform:rotate(180deg); }
+
+.skill-trainings {
+  margin-top:5px;
+  border:0.5px solid var(--sep2);
+  border-radius:8px;
+  background:var(--glass);
+  padding:7px 10px;
+  display:none;
+}
+.skill-trainings.open { display:block; }
+.training-list {
+  list-style:disc;
+  padding-left:16px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.training-list li {
+  font-size:12px;
+  color:var(--label3);
+  line-height:1.4;
+}
+.training-empty {
+  font-size:12px;
+  color:var(--label4);
+}
 
 /* filter panel */
 .fp {
@@ -774,6 +830,25 @@ function escapeHTML(str = '') {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+const skillToTrainings = window.skillToTrainings || {};
+
+function normalizeSkillKey(skill = '') {
+  return String(skill).trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function trainingsForSkill(skill = '') {
+  const normKey = normalizeSkillKey(skill);
+  if (!normKey) return [];
+
+  if (Array.isArray(skillToTrainings[normKey])) return skillToTrainings[normKey];
+  if (Array.isArray(skillToTrainings[skill])) return skillToTrainings[skill];
+
+  const matchedKey = Object.keys(skillToTrainings).find(k => normalizeSkillKey(k) === normKey);
+  return matchedKey && Array.isArray(skillToTrainings[matchedKey])
+    ? skillToTrainings[matchedKey]
+    : [];
 }
 
 function hash01(s) {
@@ -1416,10 +1491,23 @@ function renderPanel(role) {
      <div class="panel-title">${escapeHTML(role.title)}</div>`;
 
   const skillsHTML = (role.skills || []).length
-    ? `<div class="skills-wrap">${role.skills.map(s => `<span class="skill-chip">${escapeHTML(s)}</span>`).join('')}</div>`
+    ? `<div class="skills-wrap">${role.skills.map((s, idx) => {
+      const trainings = trainingsForSkill(s);
+      const trainingsHTML = trainings.length
+        ? `<ul class="training-list">${trainings.map(t => `<li>${escapeHTML(t)}</li>`).join('')}</ul>`
+        : '<div class="training-empty">No trainings mapped</div>';
+
+      return `<div class="skill-item">
+        <button class="skill-chip-btn" type="button" aria-expanded="false" data-skill-index="${idx}">
+          <span>${escapeHTML(s)}</span>
+        </button>
+        <div class="skill-trainings" id="skill-trainings-${idx}">${trainingsHTML}</div>
+      </div>`;
+    }).join('')}</div>`
     : '<p>—</p>';
 
-  document.getElementById('panelBody').innerHTML = `
+  const panelBody = document.getElementById('panelBody');
+  panelBody.innerHTML = `
     <div class="prow">
       <div class="prow-label">Category</div>
       <p>${escapeHTML(role.category || '—')} · ${escapeHTML(role.level || '—')}</p>
@@ -1445,6 +1533,27 @@ function renderPanel(role) {
       ${renderPathList(role)}
     </div>
   `;
+
+  panelBody.querySelectorAll('.skill-chip-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.dataset.skillIndex;
+      const trainingPanel = panelBody.querySelector(`#skill-trainings-${idx}`);
+      if (!trainingPanel) return;
+
+      const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+      panelBody.querySelectorAll('.skill-chip-btn[aria-expanded="true"]').forEach(otherBtn => {
+        otherBtn.setAttribute('aria-expanded', 'false');
+      });
+      panelBody.querySelectorAll('.skill-trainings.open').forEach(otherPanel => {
+        otherPanel.classList.remove('open');
+      });
+
+      if (!isExpanded) {
+        btn.setAttribute('aria-expanded', 'true');
+        trainingPanel.classList.add('open');
+      }
+    });
+  });
 }
 
 function openPanelById(id) {
