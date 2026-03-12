@@ -681,6 +681,7 @@ let isDark = false;
 let basePositions = {};
 let activeRoleId = null;
 let currentPositions = {};
+let skillTrainingByKey = new Map();
 
 const BANDS = {
   entry:  { rMin:1.6, rMax:11.8 },
@@ -714,6 +715,43 @@ function normalizeFilterValue(v) {
     .toLowerCase();
 }
 
+function normalizeSkillKey(str) {
+  return String(str ?? '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\/\s*/g, '/')
+    .trim()
+    .toLowerCase();
+}
+
+function parseSkillTrainingCSV(csv) {
+  const bySkill = new Map();
+  const text = String(csv ?? '').trim();
+  if (!text) return bySkill;
+
+  const lines = text.split('\n');
+  if (lines.length < 2) return bySkill;
+  const hdr = splitCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+  const skillCol = hdr.findIndex(h => h === 'skill' || h === 'skills');
+  if (skillCol < 0) return bySkill;
+
+  for (let i = 1; i < lines.length; i++) {
+    const vals = splitCSVLine(lines[i]);
+    const label = (vals[skillCol] || '').trim();
+    const key = normalizeSkillKey(label);
+    if (!key) continue;
+
+    if (!bySkill.has(key)) {
+      bySkill.set(key, {
+        label,
+        row: Object.fromEntries(hdr.map((h, idx) => [h, (vals[idx] || '').trim()]))
+      });
+    }
+  }
+
+  return bySkill;
+}
+
 function toggleTheme() {
   isDark = !isDark;
   document.body.classList.toggle('dark', isDark);
@@ -740,6 +778,11 @@ async function loadData() {
     roles = parseCSV(rolesCSV);
     skillToTrainings = parseSkillTrainingCSV(skillTrainingCSV);
     if (!roles.length) throw new Error('Empty data');
+
+    const skillLines = roles
+      .flatMap(r => r.skills || [])
+      .map(skill => `"${String(skill ?? '').replaceAll('\"', '\"\"')}"`);
+    skillTrainingByKey = parseSkillTrainingCSV(['skill', ...skillLines].join('\n'));
 
     roleById = new Map(roles.map(r => [r.id, r]));
     filtered = [...roles];
@@ -1535,19 +1578,12 @@ function renderPanel(role) {
      <div class="panel-title">${escapeHTML(role.title)}</div>`;
 
   const skillsHTML = (role.skills || []).length
-    ? `<div class="skills-wrap">${role.skills.map((s, idx) => {
-      const trainings = trainingsForSkill(s);
-      const trainingsHTML = trainings.length
-        ? `<ul class="training-list">${trainings.map(t => `<li>${escapeHTML(t)}</li>`).join('')}</ul>`
-        : '<div class="training-empty">No trainings mapped</div>';
-
-      return `<div class="skill-item">
-        <button class="skill-chip-btn" type="button" aria-expanded="false" data-skill-index="${idx}">
-          <span>${escapeHTML(s)}</span>
-        </button>
-        <div class="skill-trainings" id="skill-trainings-${idx}">${trainingsHTML}</div>
-      </div>`;
-    }).join('')}</div>`
+    ? `<div class="skills-wrap">${role.skills.map(skill => {
+        const key = normalizeSkillKey(skill);
+        const match = skillTrainingByKey.get(key);
+        const label = (match && match.label) || String(skill || '').trim();
+        return `<span class="skill-chip">${escapeHTML(label)}</span>`;
+      }).join('')}</div>`
     : '<p>—</p>';
 
   const panelBody = document.getElementById('panelBody');
