@@ -614,10 +614,12 @@ body.dark .fp { box-shadow:-10px 0 28px rgba(0,0,0,0.25); }
 
 <script>
 const SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?output=csv';
+const SKILL_TRAINING_SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?gid=401763837&single=true&output=csv';
 
 let roles = [];
 let filtered = [];
 let roleById = new Map();
+let skillToTrainings = new Map();
 let filt = { level:'all', category:'all', search:'' };
 let isDark = false;
 let basePositions = {};
@@ -667,9 +669,20 @@ function toggleTheme() {
 async function loadData() {
   showState('loading');
   try {
-    const res = await fetch(SHEET);
-    if (!res.ok) throw new Error('Network error');
-    roles = parseCSV(await res.text());
+    const [rolesRes, skillTrainingRes] = await Promise.all([
+      fetch(SHEET),
+      fetch(SKILL_TRAINING_SHEET)
+    ]);
+
+    if (!rolesRes.ok || !skillTrainingRes.ok) throw new Error('Network error');
+
+    const [rolesCSV, skillTrainingCSV] = await Promise.all([
+      rolesRes.text(),
+      skillTrainingRes.text()
+    ]);
+
+    roles = parseCSV(rolesCSV);
+    skillToTrainings = parseSkillTrainingCSV(skillTrainingCSV);
     if (!roles.length) throw new Error('Empty data');
 
     roleById = new Map(roles.map(r => [r.id, r]));
@@ -740,6 +753,37 @@ function parseCSV(csv) {
     if (row.id && row.title) out.push(row);
   }
   return out;
+}
+
+function parseSkillTrainingCSV(csv) {
+  const lines = csv.trim().split('\n');
+  if (!lines.length) return new Map();
+
+  const headerIndex = new Map();
+  splitCSVLine(lines[0]).forEach((header, index) => {
+    headerIndex.set(header.trim().toLowerCase(), index);
+  });
+
+  const skillIdx = headerIndex.get('skill');
+  const trainingIdx = headerIndex.get('training');
+  if (skillIdx == null || trainingIdx == null) return new Map();
+
+  const trainingSetsBySkill = new Map();
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const cols = splitCSVLine(lines[i]);
+    const skill = (cols[skillIdx] || '').trim();
+    const training = (cols[trainingIdx] || '').trim();
+    if (!skill || !training) continue;
+
+    if (!trainingSetsBySkill.has(skill)) trainingSetsBySkill.set(skill, new Set());
+    trainingSetsBySkill.get(skill).add(training);
+  }
+
+  return new Map(
+    [...trainingSetsBySkill.entries()].map(([skill, trainings]) => [skill, [...trainings]])
+  );
 }
 
 function buildCatFilters() {
