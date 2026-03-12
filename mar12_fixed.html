@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Career Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:      #f4f6f9;
+  --bg2:     #e8ecf2;
+  --bg3:     #dde2ea;
+  --glass:   rgba(255,255,255,0.80);
+  --glass2:  rgba(255,255,255,0.94);
+  --label:   #0d1f4e;
+  --label2:  #1a3060;
+  --label3:  #5a6a8a;
+  --label4:  #8796af;
+  --sep:     rgba(13,31,78,0.12);
+  --sep2:    rgba(13,31,78,0.06);
+  --accent:  #4caf2e;
+  --accent2: #3d9424;
+}
+
+body.dark {
+  --bg:      #0d1423;
+  --bg2:     #162135;
+  --bg3:     #20304b;
+  --glass:   rgba(13,20,35,0.88);
+  --glass2:  rgba(16,25,42,0.96);
+  --label:   #f4f8ff;
+  --label2:  #d8e5ff;
+  --label3:  #adc0e6;
+  --label4:  #8ea6d5;
+  --sep:     rgba(207,224,255,0.16);
+  --sep2:    rgba(207,224,255,0.08);
+  --accent:  #71e34c;
+  --accent2: #5fcc39;
+}
+
+html, body {
+  height:100%;
+  font-family:'Inter', -apple-system, 'SF Pro Text', sans-serif;
+  background:var(--bg);
+  color:var(--label);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow:hidden;
+  transition:background 0.35s, color 0.35s;
+}
+
+/* ─── NAV ────────────────────────────────────────── */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:300;
+  height:48px;
+  background:var(--glass);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border-bottom:0.5px solid var(--sep);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px;
+}
+
+.nav-brand { display:flex; align-items:center; gap:8px; }
+.nav-title  { font-size:15px; font-weight:600; letter-spacing:-0.3px; color:var(--label); }
+.nav-sep    { width:1px; height:12px; background:var(--sep); }
+.nav-sub    { font-size:12px; color:var(--label3); font-weight:400; }
+.nav-right  { display:flex; align-items:center; gap:6px; }
+
+.pill-search {
+  display:flex; align-items:center; gap:6px;
+  height:30px; padding:0 10px;
+  background:var(--bg2); border:0.5px solid var(--sep);
+  border-radius:10px; transition:all 0.2s;
+}
+.pill-search svg { color:var(--label4); flex-shrink:0; }
+.pill-search input {
+  background:none; border:none; outline:none;
+  font-family:inherit; font-size:13px;
+  color:var(--label); width:160px; transition:width 0.3s;
+}
+.pill-search input::placeholder { color:var(--label4); }
+.pill-search input:focus { width:210px; }
+.pill-search:focus-within {
+  border-color:rgba(76,175,46,0.48);
+  box-shadow:0 0 0 3px rgba(76,175,46,0.10);
+}
+
+.nav-btn {
+  width:30px; height:30px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--bg2); border:0.5px solid var(--sep);
+  border-radius:9px; cursor:pointer; color:var(--label3);
+  transition:background 0.15s, color 0.15s, border-color 0.15s;
+}
+.nav-btn:hover { background:var(--bg3); color:var(--label); }
+.nav-btn.on    { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* ─── MAP STAGE ──────────────────────────────────── */
+.stage {
+  position:fixed; inset:48px 0 0 0;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+
+.wheel-wrap {
+  position:relative;
+  width:min(84vmin, 860px);
+  height:min(84vmin, 860px);
+  transition:transform 520ms cubic-bezier(0.22, 1, 0.36, 1), filter 360ms ease;
+  transform-origin:center center;
+}
+.wheel-wrap.focus-mode {
+  transform:scale(1.11);
+}
+
+.svg-layer {
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; overflow:visible;
+}
+
+/* ─── OVERLAYS ───────────────────────────────────── */
+#ringLabels, #catLabels {
+  position:absolute; inset:0; pointer-events:none;
+}
+#stationsLayer {
+  position:absolute; inset:0; pointer-events:all;
+}
+#focusLabels {
+  position:absolute; inset:0;
+  pointer-events:none;
+  z-index:120;
+}
+
+.rlabel {
+  position:absolute; transform:translate(-50%,-50%);
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  pointer-events:none;
+}
+.rlabel-pill {
+  padding:3px 10px; border-radius:100px;
+  font-size:9px; font-weight:700;
+  letter-spacing:0.06em; text-transform:uppercase;
+  white-space:nowrap;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:0.5px solid;
+}
+.rlabel-pill.entry  { background:rgba(76,175,46,0.14); border-color:rgba(76,175,46,0.42); color:#2d7a14; }
+.rlabel-pill.mid    { background:rgba(26,74,191,0.12); border-color:rgba(26,74,191,0.36); color:#1a4abf; }
+.rlabel-pill.senior { background:rgba(13,31,78,0.10);  border-color:rgba(13,31,78,0.30);  color:#0d1f4e; }
+
+body.dark .rlabel-pill.entry  { background:rgba(113,227,76,0.16); border-color:rgba(113,227,76,0.42); color:#93f772; }
+body.dark .rlabel-pill.mid    { background:rgba(91,137,255,0.16); border-color:rgba(91,137,255,0.42); color:#b7ccff; }
+body.dark .rlabel-pill.senior { background:rgba(187,206,255,0.14); border-color:rgba(187,206,255,0.34); color:#e0ebff; }
+.rlabel-sub { font-size:9px; color:var(--label4); font-weight:500; }
+
+.clabel {
+  position:absolute; transform:translate(-50%,-50%);
+  font-size:9px; font-weight:700;
+  letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--label3); white-space:nowrap;
+  pointer-events:none;
+  text-shadow:0 1px 0 rgba(255,255,255,0.35);
+}
+body.dark .clabel {
+  color:#d8e5ff;
+  text-shadow:0 1px 2px rgba(0,0,0,0.40);
+}
+
+/* ─── NODES ──────────────────────────────────────── */
+.dot {
+  position:absolute;
+  cursor:pointer;
+  transform:translate(-50%,-50%);
+  transition:
+    left 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 460ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 260ms ease,
+    filter 300ms ease;
+  z-index:10;
+}
+.dot:hover, .dot.sel {
+  transform:translate(-50%,-50%) scale(1.48);
+  z-index:50;
+}
+.dot.related { z-index:36; }
+.dot.dimmed {
+  opacity:0.14;
+  filter:blur(1.4px) saturate(0.45);
+}
+.dot.cascade-1 { transform:translate(-50%,-50%) scale(1.18); }
+.dot.cascade-2 { transform:translate(-50%,-50%) scale(1.10); }
+
+.dot-circle {
+  border-radius:50%;
+  box-shadow:0 1px 4px rgba(0,0,0,0.18), 0 0 0 2.5px var(--bg);
+  transition:box-shadow 0.25s ease;
+}
+
+.dot.entry  .dot-circle { width:10px; height:10px; background:#4caf2e; }
+.dot.mid    .dot-circle { width:14px; height:14px; background:#1a4abf; }
+.dot.senior .dot-circle { width:18px; height:18px; background:#0d1f4e; }
+
+body.dark .dot.entry  .dot-circle { background:#71e34c; }
+body.dark .dot.mid    .dot-circle { background:#5b89ff; }
+body.dark .dot.senior .dot-circle { background:#bdd0ff; }
+
+.dot:hover .dot-circle, .dot.sel .dot-circle {
+  box-shadow:0 0 0 5px rgba(26,74,191,0.18), 0 0 0 2.5px var(--bg);
+}
+.dot.entry:hover .dot-circle, .dot.entry.sel .dot-circle {
+  box-shadow:0 0 0 5px rgba(76,175,46,0.28), 0 0 0 2.5px var(--bg);
+}
+.dot.senior:hover .dot-circle, .dot.senior.sel .dot-circle {
+  box-shadow:0 0 0 5px rgba(13,31,78,0.22), 0 0 0 2.5px var(--bg);
+}
+.dot.related .dot-circle {
+  box-shadow:0 0 0 4px rgba(26,74,191,0.14), 0 0 0 2.5px var(--bg);
+}
+
+body.dark .dot.related .dot-circle {
+  box-shadow:0 0 0 4px rgba(122,160,255,0.22), 0 0 0 2.5px var(--bg);
+}
+body.dark .dot:hover .dot-circle, body.dark .dot.sel .dot-circle {
+  box-shadow:0 0 0 5px rgba(91,137,255,0.26), 0 0 0 2.5px var(--bg);
+}
+body.dark .dot.entry:hover .dot-circle, body.dark .dot.entry.sel .dot-circle {
+  box-shadow:0 0 0 5px rgba(113,227,76,0.30), 0 0 0 2.5px var(--bg);
+}
+body.dark .dot.senior:hover .dot-circle, body.dark .dot.senior.sel .dot-circle {
+  box-shadow:0 0 0 5px rgba(189,208,255,0.24), 0 0 0 2.5px var(--bg);
+}
+
+/* dot tips for hover only */
+.dot-tip {
+  position:absolute;
+  bottom:calc(100% + 10px);
+  left:50%;
+  transform:translateX(-50%) translateY(4px);
+  white-space:nowrap;
+  font-size:11px; font-weight:600; color:var(--label);
+  background:var(--glass2);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  padding:6px 12px;
+  border-radius:10px;
+  border:0.5px solid var(--sep);
+  box-shadow:0 8px 24px rgba(0,0,0,0.10);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 220ms ease, transform 220ms ease;
+  max-width:230px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  z-index:100;
+}
+body.dark .dot-tip {
+  background:rgba(17,26,43,0.98);
+  border-color:rgba(207,224,255,0.18);
+  color:#f6f9ff;
+  box-shadow:0 10px 28px rgba(0,0,0,0.40);
+}
+.dot:hover .dot-tip {
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+.wheel-wrap.focus-mode .dot .dot-tip {
+  opacity:0 !important;
+  transform:translateX(-50%) translateY(4px) !important;
+}
+
+/* separate measured labels */
+.focus-label {
+  position:absolute;
+  white-space:nowrap;
+  font-size:11px;
+  font-weight:600;
+  color:var(--label);
+  background:var(--glass2);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  padding:6px 12px;
+  border-radius:10px;
+  border:0.5px solid var(--sep);
+  box-shadow:0 8px 24px rgba(0,0,0,0.10);
+  transition:
+    left 520ms cubic-bezier(0.22,1,0.36,1),
+    top 520ms cubic-bezier(0.22,1,0.36,1),
+    opacity 220ms ease;
+  opacity:0;
+  max-width:240px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+body.dark .focus-label {
+  background:rgba(17,26,43,0.98);
+  border-color:rgba(207,224,255,0.18);
+  color:#f6f9ff;
+  box-shadow:0 10px 28px rgba(0,0,0,0.40);
+}
+.focus-label.show { opacity:1; }
+
+.focus-stem {
+  position:absolute;
+  height:2px;
+  background:var(--sep);
+  opacity:0.75;
+  transition:
+    left 520ms cubic-bezier(0.22,1,0.36,1),
+    top 520ms cubic-bezier(0.22,1,0.36,1),
+    width 520ms cubic-bezier(0.22,1,0.36,1),
+    opacity 220ms ease;
+}
+body.dark .focus-stem {
+  background:rgba(220,232,255,0.28);
+}
+
+/* ─── EDGES ──────────────────────────────────────── */
+.cline {
+  fill:none;
+  stroke-width:1.05;
+  opacity:0;
+  transition:opacity 300ms ease, stroke-width 300ms ease, filter 300ms ease;
+  stroke-linecap:round;
+}
+.cline.on { opacity:0.94; stroke-width:1.5; }
+.cline.dimmed {
+  opacity:0.06 !important;
+  filter:blur(1px);
+}
+.cline.entry  { stroke:#4caf2e; }
+.cline.mid    { stroke:#1a4abf; }
+.cline.senior { stroke:#0d1f4e; }
+
+body.dark .cline.entry  { stroke:#71e34c; }
+body.dark .cline.mid    { stroke:#7aa0ff; }
+body.dark .cline.senior { stroke:#d3e0ff; }
+
+.cchev {
+  fill:none;
+  stroke-width:0.95;
+  opacity:0;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  transition:opacity 300ms ease, filter 300ms ease;
+}
+.cchev.on { opacity:0.86; }
+.cchev.dimmed { opacity:0.04 !important; filter:blur(1px); }
+.cchev.entry  { stroke:#4caf2e; }
+.cchev.mid    { stroke:#1a4abf; }
+.cchev.senior { stroke:#0d1f4e; }
+
+body.dark .cchev.entry  { stroke:#71e34c; }
+body.dark .cchev.mid    { stroke:#9bb8ff; }
+body.dark .cchev.senior { stroke:#dce8ff; }
+
+/* ─── PANEL ──────────────────────────────────────── */
+.panel {
+  position:fixed; top:48px; right:-400px; bottom:0;
+  width:360px;
+  background:var(--glass2);
+  backdrop-filter:blur(28px) saturate(200%);
+  -webkit-backdrop-filter:blur(28px) saturate(200%);
+  border-left:0.5px solid var(--sep);
+  transition:right 0.4s cubic-bezier(0.4,0,0.2,1);
+  z-index:250;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  box-shadow:-10px 0 32px rgba(0,0,0,0.05);
+}
+body.dark .panel { box-shadow:-14px 0 36px rgba(0,0,0,0.30); }
+.panel.open { right:0; }
+
+.panel-header { padding:20px 20px 0; flex-shrink:0; position:relative; }
+
+.panel-close {
+  position:absolute; top:14px; right:14px;
+  width:26px; height:26px;
+  background:var(--bg3); border:none; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--label3); font-size:15px;
+  transition:background 0.15s, color 0.15s;
+}
+.panel-close:hover { background:var(--sep); color:var(--label); }
+
+.panel-badge {
+  display:inline-flex; align-items:center;
+  font-size:9px; font-weight:700;
+  letter-spacing:0.06em; text-transform:uppercase;
+  padding:3px 9px; border-radius:100px;
+  margin-bottom:8px; border:0.5px solid;
+}
+.panel-badge.entry  { background:rgba(76,175,46,0.10); border-color:rgba(76,175,46,0.35); color:#2d7a14; }
+.panel-badge.mid    { background:rgba(26,74,191,0.08); border-color:rgba(26,74,191,0.30); color:#1a4abf; }
+.panel-badge.senior { background:rgba(13,31,78,0.08);  border-color:rgba(13,31,78,0.25);  color:#0d1f4e; }
+
+body.dark .panel-badge.entry  { background:rgba(113,227,76,0.12); border-color:rgba(113,227,76,0.36); color:#9cf980; }
+body.dark .panel-badge.mid    { background:rgba(91,137,255,0.12); border-color:rgba(91,137,255,0.36); color:#c4d5ff; }
+body.dark .panel-badge.senior { background:rgba(189,208,255,0.12); border-color:rgba(189,208,255,0.26); color:#edf3ff; }
+
+.panel-title {
+  font-size:20px; font-weight:700;
+  letter-spacing:-0.4px; line-height:1.2;
+  color:var(--label); margin-bottom:16px;
+}
+
+.panel-divider { height:0.5px; background:var(--sep); margin:0 20px; }
+
+.panel-body { flex:1; overflow-y:auto; padding:16px 20px 32px; }
+.panel-body::-webkit-scrollbar { width:4px; }
+.panel-body::-webkit-scrollbar-track { background:transparent; }
+.panel-body::-webkit-scrollbar-thumb { background:var(--sep); border-radius:2px; }
+
+.prow { margin-bottom:16px; }
+.prow-label {
+  font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.05em;
+  color:var(--label4); margin-bottom:4px;
+}
+.prow p { font-size:13px; line-height:1.58; color:var(--label2); }
+
+.plist { list-style:none; }
+.plist li {
+  font-size:13px; line-height:1.5; color:var(--label2);
+  padding:7px 0; border-bottom:0.5px solid var(--sep2);
+  display:flex; align-items:flex-start; gap:8px;
+}
+.plist li:last-child { border-bottom:none; }
+.plist li.link { color:var(--accent); cursor:pointer; }
+.plist li.link:hover { text-decoration:underline; }
+
+.path-arrow {
+  color:var(--label4);
+  font-size:12px;
+  line-height:1.5;
+  flex-shrink:0;
+  margin-top:1px;
+}
+.path-target { display:flex; flex-direction:column; }
+
+.skills-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.skill-chip {
+  font-size:11px; padding:3px 9px;
+  background:var(--bg2); border:0.5px solid var(--sep);
+  border-radius:6px; color:var(--label2);
+}
+.skill-chip-btn {
+  font-family:inherit;
+  line-height:1.2;
+  cursor:pointer;
+  transition:background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.skill-chip-btn:focus-visible {
+  outline:2px solid rgba(76,175,46,0.55);
+  outline-offset:2px;
+}
+.skill-chip-btn[aria-expanded="true"],
+.skill-chip-btn.open {
+  background:rgba(76,175,46,0.16);
+  border-color:rgba(76,175,46,0.46);
+  color:var(--accent2);
+}
+body.dark .skill-chip-btn[aria-expanded="true"],
+body.dark .skill-chip-btn.open {
+  background:rgba(113,227,76,0.18);
+  border-color:rgba(113,227,76,0.44);
+  color:#c9ffb9;
+}
+
+.skill-trainings {
+  margin-top:8px;
+  padding:8px;
+  border-radius:8px;
+  border:0.5px solid var(--sep2);
+  background:color-mix(in srgb, var(--bg2) 72%, transparent);
+}
+body.dark .skill-trainings {
+  background:color-mix(in srgb, var(--bg2) 58%, transparent);
+}
+.skill-trainings[hidden] { display:none; }
+
+.training-list {
+  list-style:none;
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.training-item {
+  font-size:11px;
+  line-height:1.25;
+  color:var(--label3);
+  background:var(--glass);
+  border:0.5px solid var(--sep2);
+  border-radius:999px;
+  padding:2px 8px;
+}
+.training-item a {
+  color:inherit;
+  text-decoration:none;
+}
+.training-item a:hover {
+  text-decoration:underline;
+}
+body.dark .training-item {
+  color:#d6e6ff;
+  border-color:rgba(207,224,255,0.24);
+}
+
+/* filter panel */
+.fp {
+  position:fixed; top:48px; right:-260px; bottom:0;
+  width:228px;
+  background:var(--glass2);
+  backdrop-filter:blur(28px) saturate(200%);
+  -webkit-backdrop-filter:blur(28px) saturate(200%);
+  border-left:0.5px solid var(--sep);
+  transition:right 0.35s cubic-bezier(0.4,0,0.2,1);
+  z-index:240;
+  padding:16px;
+  overflow-y:auto;
+}
+body.dark .fp { box-shadow:-10px 0 28px rgba(0,0,0,0.25); }
+.fp.open { right:0; }
+.fp-head { font-size:12px; font-weight:700; color:var(--label); margin-bottom:14px; }
+.fp-section { margin-bottom:16px; }
+.fp-section-label {
+  font-size:9px; font-weight:700; text-transform:uppercase;
+  letter-spacing:0.07em; color:var(--label4); margin-bottom:6px;
+}
+.fp-row {
+  padding:6px 8px; font-size:13px; cursor:pointer;
+  color:var(--label3); border-radius:7px;
+  transition:background 0.12s, color 0.12s;
+  display:flex; align-items:center; gap:6px;
+}
+.fp-row:hover { background:var(--bg2); color:var(--label); }
+.fp-row.on { color:var(--accent); font-weight:600; }
+.fp-row.on::before {
+  content:''; width:6px; height:6px;
+  border-radius:50%; background:var(--accent); flex-shrink:0;
+}
+
+/* states */
+.loader {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:12px; z-index:50;
+}
+.loader-ring {
+  width:28px; height:28px;
+  border:2.5px solid var(--sep);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loader-text { font-size:13px; color:var(--label3); }
+
+.err-state {
+  position:absolute; inset:0;
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px;
+}
+.err-state p { font-size:13px; color:var(--label3); }
+.err-btn {
+  font-size:13px; padding:7px 16px;
+  background:var(--accent); color:#fff;
+  border:none; border-radius:9px; cursor:pointer;
+  font-family:inherit;
+  transition:background 0.15s;
+}
+.err-btn:hover { background:var(--accent2); }
+
+.empty-msg {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:6px;
+}
+.empty-msg h3 { font-size:16px; font-weight:600; color:var(--label); }
+.empty-msg p  { font-size:13px; color:var(--label3); max-width:220px; text-align:center; line-height:1.5; }
+
+@media(max-width:640px){ .nav-sub,.nav-sep { display:none; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <span class="nav-title">Career Map</span>
+    <div class="nav-sep"></div>
+    <span class="nav-sub">Inner → outer = career progression</span>
+  </div>
+  <div class="nav-right">
+    <div class="pill-search">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="6.5" cy="6.5" r="5"></circle>
+        <path d="M10.5 10.5l3 3"></path>
+      </svg>
+      <input type="text" id="searchInput" placeholder="Search roles…" />
+    </div>
+    <button class="nav-btn" id="themeBtn" onclick="toggleTheme()">
+      <svg id="iMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      <svg id="iSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="display:none">
+        <circle cx="12" cy="12" r="4.5"></circle>
+        <line x1="12" y1="2" x2="12" y2="5"></line>
+        <line x1="12" y1="19" x2="12" y2="22"></line>
+        <line x1="4.93" y1="4.93" x2="7.05" y2="7.05"></line>
+        <line x1="16.95" y1="16.95" x2="19.07" y2="19.07"></line>
+        <line x1="2" y1="12" x2="5" y2="12"></line>
+        <line x1="19" y1="12" x2="22" y2="12"></line>
+        <line x1="4.93" y1="19.07" x2="7.05" y2="16.95"></line>
+        <line x1="16.95" y1="7.05" x2="19.07" y2="4.93"></line>
+      </svg>
+    </button>
+    <button class="nav-btn on" id="filterBtn" onclick="toggleFP()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M2 4h12M4 8h8M6 12h4"></path>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<div class="stage" id="stage">
+  <div class="wheel-wrap" id="wheelWrap" style="display:none">
+    <svg class="svg-layer" id="svgBase" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="ringLabels"></div>
+    <div id="catLabels"></div>
+    <div id="stationsLayer"></div>
+    <div id="focusLabels"></div>
+    <svg class="svg-layer" id="svgLines" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"
+         style="pointer-events:none;position:absolute;inset:0;z-index:20"></svg>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="loader-ring"></div>
+    <div class="loader-text">Loading…</div>
+  </div>
+
+  <div class="err-state" id="errState">
+    <p>Could not load data</p>
+    <button class="err-btn" onclick="loadData()">Retry</button>
+  </div>
+</div>
+
+<div class="fp open" id="fp">
+  <div class="fp-head">Filter</div>
+  <div class="fp-section">
+    <div class="fp-section-label">Level</div>
+    <div class="fp-row on" data-f="level" data-v="all" onclick="setF('level','all')">All levels</div>
+    <div class="fp-row" data-f="level" data-v="Entry" onclick="setF('level','Entry')">Entry</div>
+    <div class="fp-row" data-f="level" data-v="Mid-Level" onclick="setF('level','Mid-Level')">Mid-Level</div>
+    <div class="fp-row" data-f="level" data-v="Senior" onclick="setF('level','Senior')">Senior</div>
+  </div>
+  <div class="fp-section">
+    <div class="fp-section-label">Category</div>
+    <div class="fp-row on" data-f="category" data-v="all" onclick="setF('category','all')">All categories</div>
+    <div id="fpCats"></div>
+  </div>
+</div>
+
+<div class="panel" id="panel">
+  <div class="panel-header">
+    <button class="panel-close" onclick="closePanel()">×</button>
+    <div id="panelTop"></div>
+  </div>
+  <div class="panel-divider"></div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<script>
+const SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?output=csv';
+const SKILL_TRAINING_SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?gid=401763837&single=true&output=csv';
+
+let roles = [];
+let filtered = [];
+let roleById = new Map();
+let skillToTrainings = new Map();
+let filt = { level:'all', category:'all', search:'' };
+let isDark = false;
+let basePositions = {};
+let activeRoleId = null;
+let currentPositions = {};
+
+const BANDS = {
+  entry:  { rMin:1.6, rMax:11.8 },
+  mid:    { rMin:22,  rMax:33 },
+  senior: { rMin:38,  rMax:46 }
+};
+
+const RLABEL = {
+  entry:  { r:7.2,  lbl:'Entry',     sub:'Early career' },
+  mid:    { r:27,   lbl:'Mid-Level', sub:'Growth roles' },
+  senior: { r:42,   lbl:'Senior',    sub:'Leadership' }
+};
+
+const PIE_COLORS_LIGHT = [
+  '#7FB3FF', '#6ED8B3', '#FFD36B', '#FFA878',
+  '#C59BFF', '#78D7FF', '#A9D96E', '#FF93C5',
+  '#94ABFF', '#FFBF70', '#58C6C0', '#F7A4A4'
+];
+
+const PIE_COLORS_DARK = [
+  '#4E83FF', '#00C78A', '#F2B700', '#FF7B47',
+  '#9A6BFF', '#26C0FF', '#82CB1E', '#FF5EA5',
+  '#748DFF', '#FF9F1A', '#10B5AD', '#FF7F7F'
+];
+
+function normalizeFilterValue(v) {
+  return String(v ?? '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeSkillKey(str) {
+  return String(str ?? '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\/\s*/g, '/')
+    .trim()
+    .toLowerCase();
+}
+
+function parseSkillTrainingCSV(csv) {
+  const bySkill = new Map();
+  const text = String(csv ?? '').trim();
+  if (!text) return bySkill;
+
+  const lines = text.split('\n').filter(Boolean);
+  if (lines.length < 2) return bySkill;
+
+  const headers = splitCSVLine(lines[0]).map(h => String(h || '').trim().toLowerCase());
+  const skillIdx = headers.findIndex(h => h === 'skill' || h === 'skills');
+  if (skillIdx < 0) return bySkill;
+
+  const providerIdx = headers.findIndex(h => h === 'provider');
+  const tierIdx = headers.findIndex(h => h === 'tier');
+  const programIdxs = headers
+    .map((h, idx) => ({ h, idx }))
+    .filter(({ h }) => h === 'training program' || h === 'training')
+    .map(({ idx }) => idx);
+  const urlIdxs = headers
+    .map((h, idx) => ({ h, idx }))
+    .filter(({ h }) => h === 'training url' || h === 'url')
+    .map(({ idx }) => idx);
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i]);
+    const skill = String(cols[skillIdx] || '').trim();
+    const skillKey = normalizeSkillKey(skill);
+    if (!skillKey) continue;
+
+    const provider = providerIdx >= 0 ? String(cols[providerIdx] || '').trim() : '';
+    const tier = tierIdx >= 0 ? String(cols[tierIdx] || '').trim() : '';
+
+    const entryMap = bySkill.get(skillKey) || new Map();
+
+    const pairCount = Math.max(programIdxs.length, urlIdxs.length, 1);
+    for (let j = 0; j < pairCount; j++) {
+      const program = programIdxs[j] != null ? String(cols[programIdxs[j]] || '').trim() : '';
+      const url = urlIdxs[j] != null ? String(cols[urlIdxs[j]] || '').trim() : '';
+      if (!program) continue;
+
+      const dedupeKey = `${program}__${url}`.toLowerCase();
+      if (!entryMap.has(dedupeKey)) {
+        entryMap.set(dedupeKey, { program, url, provider, tier });
+      }
+    }
+
+    if (entryMap.size) bySkill.set(skillKey, entryMap);
+  }
+
+  return new Map(
+    [...bySkill.entries()].map(([skillKey, entries]) => [skillKey, [...entries.values()]])
+  );
+}
+
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle('dark', isDark);
+  document.getElementById('iMoon').style.display = isDark ? 'none' : '';
+  document.getElementById('iSun').style.display  = isDark ? '' : 'none';
+  if (filtered.length) layout();
+}
+
+async function loadData() {
+  showState('loading');
+  try {
+    const [rolesRes, skillTrainingRes] = await Promise.all([
+      fetch(SHEET),
+      fetch(SKILL_TRAINING_SHEET)
+    ]);
+
+    if (!rolesRes.ok || !skillTrainingRes.ok) throw new Error('Network error');
+
+    const [rolesCSV, skillTrainingCSV] = await Promise.all([
+      rolesRes.text(),
+      skillTrainingRes.text()
+    ]);
+
+    roles = parseCSV(rolesCSV);
+    skillToTrainings = parseSkillTrainingCSV(skillTrainingCSV);
+    if (!roles.length) throw new Error('Empty data');
+
+    roleById = new Map(roles.map(r => [r.id, r]));
+    filtered = [...roles];
+    buildCatFilters();
+    showState('wheel');
+    window.roles = roles;
+    requestAnimationFrame(() => setTimeout(layout, 30));
+  } catch (err) {
+    console.error(err);
+    showState('error');
+  }
+}
+
+function showState(s) {
+  document.getElementById('loader').style.display = s === 'loading' ? 'flex' : 'none';
+  document.getElementById('errState').style.display = s === 'error' ? 'flex' : 'none';
+  document.getElementById('wheelWrap').style.display = s === 'wheel' ? 'block' : 'none';
+}
+
+function splitCSVLine(line) {
+  const vals = [];
+  let cur = '';
+  let inQ = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    const next = line[i + 1];
+    if (ch === '"' && inQ && next === '"') {
+      cur += '"';
+      i++;
+    } else if (ch === '"') {
+      inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      vals.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  vals.push(cur);
+  return vals;
+}
+
+function parseCSV(csv) {
+  const lines = csv.trim().split('\n');
+  if (lines.length < 2) return [];
+  const hdr = splitCSVLine(lines[0]).map(h => h.trim());
+  const out = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const vals = splitCSVLine(lines[i]);
+    const row = {};
+    hdr.forEach((h, j) => row[h] = (vals[j] || '').trim());
+
+    row.connections = row.connections
+      ? row.connections.split(',').map(c => c.trim()).filter(Boolean)
+      : [];
+
+    row.skills = row.skills
+      ? row.skills.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+
+    row.category = (row.category || '').trim();
+    row.level = (row.level || '').trim();
+    row.title = (row.title || '').trim();
+
+    if (row.id && row.title) out.push(row);
+  }
+  return out;
+}
+
+function buildCatFilters() {
+  const fpCats = document.getElementById('fpCats');
+  fpCats.innerHTML = '';
+
+  const seen = new Map();
+  roles.forEach(r => {
+    const raw = (r.category || '').trim();
+    if (!raw) return;
+    const norm = normalizeFilterValue(raw);
+    if (!seen.has(norm)) seen.set(norm, raw);
+  });
+
+  const cats = [...seen.values()].sort((a, b) => a.localeCompare(b));
+
+  cats.forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'fp-row';
+    row.dataset.f = 'category';
+    row.dataset.v = cat;
+    row.textContent = cat;
+    row.addEventListener('click', () => setF('category', cat));
+    fpCats.appendChild(row);
+  });
+}
+
+function escapeHTML(str = '') {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function trainingsForSkill(skill = '') {
+  const normKey = normalizeSkillKey(skill);
+  if (!normKey) return [];
+  return skillToTrainings.get(normKey) || [];
+}
+
+function hash01(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return (h % 1000) / 1000;
+}
+function polar(cx, cy, r, a) {
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+function arcSlice(cx, cy, r0, r1, a0, a1) {
+  const fullCircle = Math.abs((a1 - a0) - 2 * Math.PI) < 0.0001;
+
+  if (fullCircle) {
+    return `
+      M ${cx} ${cy - r1}
+      A ${r1} ${r1} 0 1 1 ${cx} ${cy + r1}
+      A ${r1} ${r1} 0 1 1 ${cx} ${cy - r1}
+      L ${cx} ${cy - r0}
+      A ${r0} ${r0} 0 1 0 ${cx} ${cy + r0}
+      A ${r0} ${r0} 0 1 0 ${cx} ${cy - r0}
+      Z
+    `;
+  }
+
+  const p1 = polar(cx, cy, r1, a0), p2 = polar(cx, cy, r1, a1);
+  const p3 = polar(cx, cy, r0, a1), p4 = polar(cx, cy, r0, a0);
+  const laf = a1 - a0 > Math.PI ? 1 : 0;
+
+  return `M${p1.x} ${p1.y} A${r1} ${r1} 0 ${laf} 1 ${p2.x} ${p2.y}
+          L${p3.x} ${p3.y} A${r0} ${r0} 0 ${laf} 0 ${p4.x} ${p4.y} Z`;
+}
+function levelKey(level) {
+  return level === 'Entry' ? 'entry' : level === 'Mid-Level' ? 'mid' : 'senior';
+}
+function sortByRadius(ids) {
+  return [...ids].sort((a, b) => {
+    const pa = basePositions[a], pb = basePositions[b];
+    const ra = pa ? Math.hypot(pa.x - 50, pa.y - 50) : 0;
+    const rb = pb ? Math.hypot(pb.x - 50, pb.y - 50) : 0;
+    return ra - rb;
+  });
+}
+function distributeSlots(count, centerY, gap, minY = 14, maxY = 86) {
+  if (count <= 0) return [];
+  const total = (count - 1) * gap;
+  let start = centerY - total / 2;
+  let end = centerY + total / 2;
+
+  if (start < minY) {
+    end += (minY - start);
+    start = minY;
+  }
+  if (end > maxY) {
+    start -= (end - maxY);
+    end = maxY;
+  }
+
+  const out = [];
+  for (let i = 0; i < count; i++) out.push(start + i * gap);
+  return out;
+}
+
+/* Prefer outward progression */
+function getRenderableConnections(role) {
+  const raw = (role.connections || []).filter(id => roleById.has(id));
+  const targets = raw.map(id => roleById.get(id)).filter(Boolean);
+
+  if (role.level === 'Entry') {
+    const outward = targets.filter(r => r.level === 'Mid-Level').map(r => r.id);
+    return outward.length ? outward : raw;
+  }
+  if (role.level === 'Mid-Level') {
+    const outward = targets.filter(r => r.level === 'Senior').map(r => r.id);
+    return outward.length ? outward : raw;
+  }
+  return raw;
+}
+function getOutgoingIds(roleId) {
+  const role = roleById.get(roleId);
+  return role ? getRenderableConnections(role) : [];
+}
+function getIncomingIds(roleId) {
+  return filtered
+    .filter(r => getRenderableConnections(r).includes(roleId))
+    .map(r => r.id);
+}
+function getNeighborIds(roleId) {
+  return new Set([...getOutgoingIds(roleId), ...getIncomingIds(roleId)].filter(id => id !== roleId));
+}
+
+/* Entry layout: center-first concentric rings */
+function concentricEntryPlacement(lRoles, idx, a0, a1, roleId) {
+  const sliceMid = (a0 + a1) / 2;
+  const count = lRoles.length;
+  const ringCaps = [1, 6, 10, 14];
+  const ringR = [1.8, 4.4, 7.2, 10.0];
+
+  let rem = idx;
+  let ring = 0;
+  while (ring < ringCaps.length && rem >= ringCaps[ring]) {
+    rem -= ringCaps[ring];
+    ring++;
+  }
+  if (ring >= ringCaps.length) ring = ringCaps.length - 1;
+
+  const ringSize = ringCaps[ring];
+  const slot = Math.min(rem, ringSize - 1);
+  const t = ringSize === 1 ? 0.5 : slot / (ringSize - 1);
+  const span = Math.min(0.26 + count * 0.05, Math.min(0.94, (a1 - a0) * 0.9));
+  const angle = sliceMid - span / 2 + t * span;
+  const r = ringR[ring] + hash01(roleId + '-entry') * 0.18;
+  return { angle, r };
+}
+
+function layout() {
+  const $svg   = document.getElementById('svgBase');
+  const $lines = document.getElementById('svgLines');
+  const $st    = document.getElementById('stationsLayer');
+  const $rl    = document.getElementById('ringLabels');
+  const $cl    = document.getElementById('catLabels');
+
+  $svg.innerHTML = $lines.innerHTML = $st.innerHTML = $rl.innerHTML = $cl.innerHTML = '';
+  document.getElementById('focusLabels').innerHTML = '';
+  basePositions = {};
+  currentPositions = {};
+
+  if (!filtered.length) {
+    closePanel(false);
+    $st.innerHTML = '<div class="empty-msg"><h3>No matches</h3><p>Adjust your filters or clear the search.</p></div>';
+    return;
+  }
+
+  const cx = 50, cy = 50;
+  const cats = [...new Set(filtered.map(r => r.category).filter(Boolean))];
+  const sliceAngle = cats.length > 0 ? (2 * Math.PI) / cats.length : 0;
+  const pieColors = isDark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT;
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  $svg.appendChild(defs);
+
+  cats.forEach((cat, i) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient');
+    g.setAttribute('id', `pg${i}`);
+    g.setAttribute('gradientUnits', 'userSpaceOnUse');
+    g.setAttribute('cx', cx);
+    g.setAttribute('cy', cy);
+    g.setAttribute('r', '50');
+
+    const color = pieColors[i % pieColors.length];
+    const peakOpacity = isDark ? 0.90 : 0.78;
+    const edgeOpacity = isDark ? 0.24 : 0.20;
+    const centerOpacity = isDark ? 0.10 : 0.08;
+
+    [['0%', centerOpacity], ['48%', peakOpacity], ['100%', edgeOpacity]].forEach(([offset, opacity]) => {
+      const stop = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop.setAttribute('offset', offset);
+      stop.setAttribute('stop-color', color);
+      stop.setAttribute('stop-opacity', String(opacity));
+      g.appendChild(stop);
+    });
+    defs.appendChild(g);
+  });
+
+  cats.forEach((cat, i) => {
+    const a0 = -Math.PI / 2 + i * sliceAngle;
+    const a1 = a0 + sliceAngle;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', arcSlice(cx, cy, 4, 49, a0, a1));
+    path.style.fill = `url(#pg${i})`;
+    path.style.stroke = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.80)';
+    path.style.strokeWidth = '0.35';
+    $svg.appendChild(path);
+
+    const lp = polar(cx, cy, 46.6, (a0 + a1) / 2);
+    const lbl = document.createElement('div');
+    lbl.className = 'clabel';
+    lbl.textContent = cat;
+    lbl.style.left = lp.x + '%';
+    lbl.style.top  = lp.y + '%';
+    $cl.appendChild(lbl);
+  });
+
+  const byLevel = { Entry:[], 'Mid-Level':[], Senior:[] };
+  filtered.forEach(r => { if (byLevel[r.level]) byLevel[r.level].push(r); });
+
+  ['entry', 'mid', 'senior'].forEach(k => {
+    const lk = k === 'entry' ? 'Entry' : k === 'mid' ? 'Mid-Level' : 'Senior';
+    if (!byLevel[lk].length) return;
+    const cfg = RLABEL[k];
+
+    const wrap = document.createElement('div');
+    wrap.className = 'rlabel';
+    wrap.style.left = '50%';
+    wrap.style.top  = (50 - cfg.r) + '%';
+    wrap.innerHTML = `<div class="rlabel-pill ${k}">${cfg.lbl}</div><div class="rlabel-sub">${cfg.sub}</div>`;
+    $rl.appendChild(wrap);
+  });
+
+  const byCat = {};
+  filtered.forEach(r => {
+    const c = r.category || 'Other';
+    if (!byCat[c]) byCat[c] = [];
+    byCat[c].push(r);
+  });
+
+  cats.forEach((cat, ci) => {
+    const catRoles = byCat[cat] || [];
+    if (!catRoles.length) return;
+
+    const a0 = -Math.PI / 2 + ci * sliceAngle;
+    const a1 = a0 + sliceAngle;
+
+    const byLv = { Entry:[], 'Mid-Level':[], Senior:[] };
+    catRoles.forEach(r => { if (byLv[r.level]) byLv[r.level].push(r); });
+
+    ['Entry', 'Mid-Level', 'Senior'].forEach(lk => {
+      const lRoles = byLv[lk];
+      if (!lRoles.length) return;
+      const k = levelKey(lk);
+      const band = BANDS[k];
+
+      lRoles.forEach((role, idx) => {
+        let angle, r;
+        const jitter = hash01(role.id + k);
+
+        if (k === 'entry') {
+          const pos = concentricEntryPlacement(lRoles, idx, a0, a1, role.id);
+          angle = pos.angle;
+          r = Math.min(Math.max(pos.r, band.rMin), band.rMax);
+        } else {
+          const t = (idx + 1) / (lRoles.length + 1);
+          angle = a0 + t * (a1 - a0);
+          if (k === 'mid') r = band.rMin + (0.22 + jitter * 0.68) * (band.rMax - band.rMin);
+          else r = band.rMin + (0.18 + jitter * 0.74) * (band.rMax - band.rMin);
+        }
+
+        const pos = polar(cx, cy, r, angle);
+        basePositions[role.id] = { x: pos.x, y: pos.y, level: role.level };
+        currentPositions[role.id] = { ...basePositions[role.id] };
+
+        const el = document.createElement('div');
+        el.className = `dot ${k}`;
+        el.dataset.id = role.id;
+        el.style.left = pos.x + '%';
+        el.style.top  = pos.y + '%';
+        el.innerHTML = `<div class="dot-circle"></div><div class="dot-tip">${escapeHTML(role.title)}</div>`;
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openPanel(role);
+        });
+        $st.appendChild(el);
+      });
+    });
+  });
+
+  filtered.forEach(role => {
+    const renderable = getRenderableConnections(role);
+    renderable.forEach(cid => {
+      const targetRole = roleById.get(cid);
+      if (!targetRole) return;
+      const k = levelKey(targetRole.level);
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('class', `cline ${k}`);
+      line.dataset.src = role.id;
+      line.dataset.tgt = cid;
+      $lines.appendChild(line);
+
+      const chev = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      chev.setAttribute('class', `cchev ${k}`);
+      chev.dataset.src = role.id;
+      chev.dataset.tgt = cid;
+      $lines.appendChild(chev);
+    });
+  });
+
+  updateNodePositions(basePositions);
+  updateEdgesGeometry(basePositions);
+
+  if (activeRoleId && basePositions[activeRoleId]) {
+    applyActiveState(activeRoleId);
+    const activeRole = roleById.get(activeRoleId);
+    if (activeRole) renderPanel(activeRole);
+  } else if (activeRoleId && !basePositions[activeRoleId]) {
+    closePanel(false);
+  }
+}
+
+function updateNodePositions(posMap) {
+  document.querySelectorAll('.dot').forEach(d => {
+    const id = d.dataset.id;
+    const p = posMap[id] || basePositions[id];
+    if (!p) return;
+    d.style.left = p.x + '%';
+    d.style.top  = p.y + '%';
+    currentPositions[id] = { ...p };
+  });
+}
+
+function chevronPath(x1, y1, x2, y2, spacing = 7, size = 1.8, width = 1.5) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 5) return '';
+  const tx = dx / len, ty = dy / len;
+  const px = -ty, py = tx;
+
+  const parts = [];
+  for (let d = Math.max(spacing, 4); d < len - 2; d += spacing) {
+    const tipX = x1 + tx * d;
+    const tipY = y1 + ty * d;
+    const backX = x1 + tx * (d - size);
+    const backY = y1 + ty * (d - size);
+
+    const lx = backX + px * width * 0.5;
+    const ly = backY + py * width * 0.5;
+    const rx = backX - px * width * 0.5;
+    const ry = backY - py * width * 0.5;
+
+    parts.push(`M ${lx} ${ly} L ${tipX} ${tipY} L ${rx} ${ry}`);
+  }
+  return parts.join(' ');
+}
+
+function updateEdgesGeometry(posMap) {
+  document.querySelectorAll('.cline').forEach(l => {
+    const src = posMap[l.dataset.src];
+    const tgt = posMap[l.dataset.tgt];
+    if (!src || !tgt) return;
+    l.setAttribute('x1', src.x);
+    l.setAttribute('y1', src.y);
+    l.setAttribute('x2', tgt.x);
+    l.setAttribute('y2', tgt.y);
+  });
+
+  document.querySelectorAll('.cchev').forEach(p => {
+    const src = posMap[p.dataset.src];
+    const tgt = posMap[p.dataset.tgt];
+    if (!src || !tgt) return;
+    p.setAttribute('d', chevronPath(src.x, src.y, tgt.x, tgt.y));
+  });
+}
+
+function buildFocusPositions(roleId) {
+  const selected = basePositions[roleId];
+  if (!selected) return { ...basePositions };
+
+  const result = {};
+  Object.keys(basePositions).forEach(id => {
+    result[id] = { ...basePositions[id] };
+  });
+
+  const incoming = sortByRadius(getIncomingIds(roleId).filter(id => id !== roleId));
+  const outgoing = sortByRadius(getOutgoingIds(roleId).filter(id => id !== roleId));
+
+  const dx = selected.x - 50;
+  const dy = selected.y - 50;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+
+  result[roleId] = {
+    ...selected,
+    x: selected.x - ux * 2.2,
+    y: selected.y - uy * 2.2
+  };
+
+  const focusY = result[roleId].y;
+  const leftX  = Math.max(18, result[roleId].x - 16);
+  const rightX = Math.min(82, result[roleId].x + 16);
+
+  const incomingYs = distributeSlots(incoming.length, focusY, 5.6, 18, 82);
+  const outgoingYs = distributeSlots(outgoing.length, focusY, 5.6, 18, 82);
+
+  incoming.forEach((id, i) => {
+    result[id] = {
+      ...basePositions[id],
+      x: leftX,
+      y: incomingYs[i]
+    };
+  });
+
+  outgoing.forEach((id, i) => {
+    result[id] = {
+      ...basePositions[id],
+      x: rightX,
+      y: outgoingYs[i]
+    };
+  });
+
+  return result;
+}
+
+function clearNodeClasses() {
+  document.querySelectorAll('.dot').forEach(d => {
+    d.classList.remove('sel', 'related', 'show-label', 'dimmed', 'cascade-1', 'cascade-2');
+  });
+  document.querySelectorAll('.cline').forEach(l => l.classList.remove('on', 'dimmed'));
+  document.querySelectorAll('.cchev').forEach(l => l.classList.remove('on', 'dimmed'));
+}
+
+function clearFocusLabels() {
+  document.getElementById('focusLabels').innerHTML = '';
+}
+
+function renderFocusLabels(roleId) {
+  clearFocusLabels();
+
+  const layer = document.getElementById('focusLabels');
+  const wrap = document.getElementById('wheelWrap');
+  const wrapRect = wrap.getBoundingClientRect();
+
+  const incoming = sortByRadius(getIncomingIds(roleId).filter(id => id !== roleId));
+  const outgoing = sortByRadius(getOutgoingIds(roleId).filter(id => id !== roleId));
+  const selected = currentPositions[roleId];
+  if (!selected) return;
+
+  const items = [
+    ...incoming.map(id => ({ id, side:'left' })),
+    { id: roleId, side:'center' },
+    ...outgoing.map(id => ({ id, side:'right' }))
+  ];
+
+  const temp = [];
+  items.forEach(item => {
+    const role = roleById.get(item.id);
+    if (!role) return;
+
+    const el = document.createElement('div');
+    el.className = 'focus-label';
+    el.textContent = role.title;
+    el.style.left = '0%';
+    el.style.top = '0%';
+    layer.appendChild(el);
+    temp.push({ ...item, el });
+  });
+
+  temp.forEach(item => {
+    const rect = item.el.getBoundingClientRect();
+    item.w = (rect.width / wrapRect.width) * 100;
+    item.h = (rect.height / wrapRect.height) * 100;
+  });
+
+  const selectedItem = temp.find(t => t.id === roleId);
+  if (selectedItem) {
+    selectedItem.x = Math.max(4, Math.min(96 - selectedItem.w, selected.x - selectedItem.w / 2));
+    selectedItem.y = Math.max(8, selected.y - 9.5);
+  }
+
+  function placeSide(sideItems, side) {
+    if (!sideItems.length) return;
+
+    const nodeXs = sideItems.map(t => currentPositions[t.id].x);
+    const anchorNodeX = side === 'left' ? Math.min(...nodeXs) : Math.max(...nodeXs);
+    const stemGap = 2.2;
+    const railGap = 15;
+
+    sideItems.forEach(item => {
+      const p = currentPositions[item.id];
+      item.y = p.y;
+      if (side === 'left') {
+        item.x = Math.max(2, anchorNodeX - railGap - item.w);
+      } else {
+        item.x = Math.min(98 - item.w, anchorNodeX + railGap);
+      }
+    });
+
+    sideItems.sort((a, b) => a.y - b.y);
+
+    const minGap = 1.8;
+    for (let i = 1; i < sideItems.length; i++) {
+      const prev = sideItems[i - 1];
+      const cur = sideItems[i];
+      const prevBottom = prev.y + prev.h / 2;
+      const curTop = cur.y - cur.h / 2;
+      const overlap = (prevBottom + minGap) - curTop;
+      if (overlap > 0) cur.y += overlap;
+    }
+
+    for (let i = sideItems.length - 2; i >= 0; i--) {
+      const next = sideItems[i + 1];
+      const cur = sideItems[i];
+      const curBottom = cur.y + cur.h / 2;
+      const nextTop = next.y - next.h / 2;
+      const overlap = (curBottom + minGap) - nextTop;
+      if (overlap > 0) cur.y -= overlap;
+    }
+
+    const topOverflow = Math.min(...sideItems.map(i => i.y - i.h / 2)) - 6;
+    if (topOverflow < 0) sideItems.forEach(i => i.y -= topOverflow);
+
+    const bottomOverflow = Math.max(...sideItems.map(i => i.y + i.h / 2)) - 94;
+    if (bottomOverflow > 0) sideItems.forEach(i => i.y -= bottomOverflow);
+
+    sideItems.forEach(item => {
+      item.stem = {
+        x1: side === 'left' ? item.x + item.w : currentPositions[item.id].x,
+        x2: side === 'left' ? currentPositions[item.id].x - stemGap : item.x,
+        y: item.y
+      };
+    });
+  }
+
+  placeSide(temp.filter(t => t.side === 'left'), 'left');
+  placeSide(temp.filter(t => t.side === 'right'), 'right');
+
+  temp.forEach(item => {
+    item.el.style.left = `${item.x}%`;
+    item.el.style.top = `${item.y}%`;
+    requestAnimationFrame(() => item.el.classList.add('show'));
+
+    if (item.side !== 'center' && item.stem) {
+      const stem = document.createElement('div');
+      stem.className = 'focus-stem';
+      stem.style.left = `${Math.min(item.stem.x1, item.stem.x2)}%`;
+      stem.style.top = `${item.stem.y}%`;
+      stem.style.width = `${Math.abs(item.stem.x2 - item.stem.x1)}%`;
+      layer.appendChild(stem);
+    }
+  });
+}
+
+function applyActiveState(roleId) {
+  const neighborIds = getNeighborIds(roleId);
+  const focusIds = new Set([roleId, ...neighborIds]);
+
+  const focusMap = buildFocusPositions(roleId);
+  updateNodePositions(focusMap);
+  updateEdgesGeometry(focusMap);
+
+  document.getElementById('wheelWrap').classList.add('focus-mode');
+  clearNodeClasses();
+
+  document.querySelectorAll('.cline').forEach(l => {
+    const isOn = l.dataset.src === roleId || l.dataset.tgt === roleId;
+    l.classList.toggle('on', isOn);
+    l.classList.toggle('dimmed', !isOn);
+  });
+
+  document.querySelectorAll('.cchev').forEach(l => {
+    const isOn = l.dataset.src === roleId || l.dataset.tgt === roleId;
+    l.classList.toggle('on', isOn);
+    l.classList.toggle('dimmed', !isOn);
+  });
+
+  let idx = 0;
+  document.querySelectorAll('.dot').forEach(d => {
+    const id = d.dataset.id;
+    const isSel = id === roleId;
+    const isFocused = focusIds.has(id);
+
+    d.classList.toggle('sel', isSel);
+    d.classList.toggle('related', !isSel && isFocused);
+    d.classList.toggle('show-label', false);
+    d.classList.toggle('dimmed', !isFocused);
+
+    d.classList.remove('cascade-1', 'cascade-2');
+    if (!isSel && isFocused) {
+      d.classList.add(idx % 2 === 0 ? 'cascade-1' : 'cascade-2');
+      idx++;
+    }
+  });
+
+  renderFocusLabels(roleId);
+}
+
+function renderPathList(role) {
+  const incomingIds = getIncomingIds(role.id).filter(id => id !== role.id);
+  const outgoingIds = getOutgoingIds(role.id).filter(id => id !== role.id);
+
+  const incomingHTML = incomingIds.length
+    ? `
+      <div style="margin-bottom:10px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--label4);margin-bottom:4px;">
+          Incoming paths
+        </div>
+        <ul class="plist">
+          ${incomingIds.map(id => {
+            const sourceRole = roleById.get(id);
+            if (!sourceRole) return '';
+            return `
+              <li class="link" onclick="openPanelById(${JSON.stringify(id)})">
+                <span class="path-arrow">→</span>
+                <span class="path-target">
+                  <span>${escapeHTML(sourceRole.title)}</span>
+                  <span style="opacity:.78">to ${escapeHTML(role.title)}</span>
+                </span>
+              </li>
+            `;
+          }).join('')}
+        </ul>
+      </div>
+    `
+    : '';
+
+  const outgoingHTML = outgoingIds.length
+    ? `
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--label4);margin-bottom:4px;">
+          Outgoing paths
+        </div>
+        <ul class="plist">
+          ${outgoingIds.map(id => {
+            const targetRole = roleById.get(id);
+            if (!targetRole) return '';
+            return `
+              <li class="link" onclick="openPanelById(${JSON.stringify(id)})">
+                <span class="path-arrow">→</span>
+                <span class="path-target">
+                  <span>${escapeHTML(role.title)}</span>
+                  <span style="opacity:.78">to ${escapeHTML(targetRole.title)}</span>
+                </span>
+              </li>
+            `;
+          }).join('')}
+        </ul>
+      </div>
+    `
+    : '';
+
+  if (!incomingHTML && !outgoingHTML) {
+    return '<p style="font-size:13px;color:var(--label3)">No direct paths listed</p>';
+  }
+
+  return incomingHTML + outgoingHTML;
+}
+
+function openPanel(role) {
+  activeRoleId = role.id;
+  applyActiveState(role.id);
+  renderPanel(role);
+  document.getElementById('panel').classList.add('open');
+}
+
+function skillKey(roleId, skill, idx) {
+  return `skill-${String(roleId || 'role').replace(/[^a-z0-9_-]/gi, '-')}-${idx}-${String(skill || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`;
+}
+
+function renderSkills(role) {
+  const skills = role.skills || [];
+  if (!skills.length) return '<p>—</p>';
+
+  const chips = skills.map((skill, idx) => {
+    const panelId = skillKey(role.id, skill, idx);
+    return `
+      <button type="button" class="skill-chip skill-chip-btn" aria-expanded="false" aria-controls="${panelId}">${escapeHTML(skill)}</button>
+    `;
+  }).join('');
+
+  const trainings = skills.map((skill, idx) => {
+    const panelId = skillKey(role.id, skill, idx);
+    const linkedTrainings = trainingsForSkill(skill);
+
+    const trainingHTML = linkedTrainings.length
+      ? linkedTrainings.map(training => {
+          const labelParts = [training.program, training.provider].filter(Boolean);
+          const label = labelParts.join(' · ');
+          const meta = training.tier ? `<span style="opacity:.72">${escapeHTML(training.tier)}</span>` : '';
+
+          if (training.url) {
+            return `
+              <li class="training-item">
+                <a href="${escapeHTML(training.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label || training.program)}</a>
+                ${meta}
+              </li>
+            `;
+          }
+
+          return `
+            <li class="training-item">
+              <span>${escapeHTML(label || training.program)}</span>
+              ${meta}
+            </li>
+          `;
+        }).join('')
+      : `<li class="training-item"><span>No linked training found yet</span></li>`;
+
+    return `
+      <div id="${panelId}" class="skill-trainings" hidden>
+        <ul class="training-list">
+          ${trainingHTML}
+        </ul>
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="skills-wrap">${chips}</div>${trainings}`;
+}
+
+function wireSkillButtons() {
+  document.querySelectorAll('.skill-chip-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panelId = btn.getAttribute('aria-controls');
+      if (!panelId) return;
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+
+      const willOpen = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', String(willOpen));
+      btn.classList.toggle('open', willOpen);
+      panel.hidden = !willOpen;
+    });
+  });
+}
+
+function renderPanel(role) {
+  const k = levelKey(role.level);
+  document.getElementById('panelTop').innerHTML =
+    `<div class="panel-badge ${k}">${escapeHTML(role.level)}</div>
+     <div class="panel-title">${escapeHTML(role.title)}</div>`;
+
+  const skillsHTML = renderSkills(role);
+
+  const panelBody = document.getElementById('panelBody');
+  panelBody.innerHTML = `
+    <div class="prow">
+      <div class="prow-label">Category</div>
+      <p>${escapeHTML(role.category || '—')} · ${escapeHTML(role.level || '—')}</p>
+    </div>
+    <div class="prow">
+      <div class="prow-label">Salary Range</div>
+      <p>${escapeHTML(role.salary || '—')}</p>
+    </div>
+    <div class="prow">
+      <div class="prow-label">About this role</div>
+      <p>${escapeHTML(role.description || '—')}</p>
+    </div>
+    <div class="prow">
+      <div class="prow-label">Education</div>
+      <p>${escapeHTML(role.education || '—')}</p>
+    </div>
+    <div class="prow">
+      <div class="prow-label">Skills</div>
+      ${skillsHTML}
+    </div>
+    <div class="prow">
+      <div class="prow-label">Career paths</div>
+      ${renderPathList(role)}
+    </div>
+  `;
+
+  wireSkillButtons();
+}
+
+function openPanelById(id) {
+  const role = roleById.get(id);
+  if (!role) return;
+  openPanel(role);
+}
+
+function closePanel(resetActive = true) {
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('wheelWrap').classList.remove('focus-mode');
+  clearNodeClasses();
+  clearFocusLabels();
+  updateNodePositions(basePositions);
+  updateEdgesGeometry(basePositions);
+  if (resetActive) activeRoleId = null;
+}
+
+function doFilter() {
+  const s = filt.search.toLowerCase();
+  const catNorm = normalizeFilterValue(filt.category);
+
+  filtered = roles.filter(r => {
+    if (filt.level !== 'all' && r.level !== filt.level) return false;
+
+    if (catNorm !== 'all' && normalizeFilterValue(r.category) !== catNorm) return false;
+
+    if (s) {
+      const hay = `${r.title || ''} ${r.description || ''}`.toLowerCase();
+      if (!hay.includes(s)) return false;
+    }
+    return true;
+  });
+
+  layout();
+}
+
+function setF(type, val) {
+  filt[type] = val;
+
+  document.querySelectorAll(`[data-f="${type}"]`).forEach(e => {
+    const rowVal = normalizeFilterValue(e.dataset.v);
+    const selectedVal = normalizeFilterValue(val);
+    e.classList.toggle('on', rowVal === selectedVal);
+  });
+
+  doFilter();
+}
+
+function toggleFP() {
+  document.getElementById('fp').classList.toggle('open');
+  document.getElementById('filterBtn').classList.toggle('on');
+}
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  filt.search = e.target.value;
+  doFilter();
+});
+
+document.addEventListener('click', (e) => {
+  const clickedInsideDot = e.target.closest('.dot');
+  const clickedInsidePanel = e.target.closest('.panel');
+  if (!clickedInsideDot && !clickedInsidePanel) closePanel();
+});
+
+window.roles = roles;
+window.openPanel = openPanel;
+window.openPanelById = openPanelById;
+window.loadData = loadData;
+window.setF = setF;
+window.toggleTheme = toggleTheme;
+
+window.addEventListener('load', loadData);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (filtered.length) layout(); }, 180);
+});
+</script>
+</body>
+</html>
