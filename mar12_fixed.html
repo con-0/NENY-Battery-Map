@@ -643,7 +643,7 @@ body.dark .fp { box-shadow:-10px 0 28px rgba(0,0,0,0.25); }
   </div>
 
   <div class="err-state" id="errState">
-    <p>Could not load data</p>
+    <p>Could not load data. Make sure the Google Sheet tab is public, or keep the CSV beside this HTML file.</p>
     <button class="err-btn" onclick="loadData()">Retry</button>
   </div>
 </div>
@@ -674,13 +674,12 @@ body.dark .fp { box-shadow:-10px 0 28px rgba(0,0,0,0.25); }
 </div>
 
 <script>
-const SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?output=csv';
-const SKILL_TRAINING_SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ39S2y1A-CLOiFGe2WZrFwj9ZKiN7959oZY2FrnmeluW8dwx3bXFMSzIKZE4EASy0N6B-QuJkH210Q/pub?gid=401763837&single=true&output=csv';
+const SHEET = 'https://docs.google.com/spreadsheets/d/1JEGiaWxyMtbedcATzDFTUaOUD6CitZ0SeqWGFHirQkc/export?format=csv&gid=1825423737';
+const LOCAL_FALLBACK_SHEET = './battery_roles_app_mapped.csv';
 
 let roles = [];
 let filtered = [];
 let roleById = new Map();
-let skillToTrainings = new Map();
 let filt = { level:'all', category:'all', search:'' };
 let isDark = false;
 let basePositions = {};
@@ -728,60 +727,6 @@ function normalizeSkillKey(str) {
     .toLowerCase();
 }
 
-function parseSkillTrainingCSV(csv) {
-  const bySkill = new Map();
-  const text = String(csv ?? '').trim();
-  if (!text) return bySkill;
-
-  const lines = text.split('\n').filter(Boolean);
-  if (lines.length < 2) return bySkill;
-
-  const headers = splitCSVLine(lines[0]).map(h => String(h || '').trim().toLowerCase());
-  const skillIdx = headers.findIndex(h => h === 'skill' || h === 'skills');
-  if (skillIdx < 0) return bySkill;
-
-  const providerIdx = headers.findIndex(h => h === 'provider');
-  const tierIdx = headers.findIndex(h => h === 'tier');
-  const programIdxs = headers
-    .map((h, idx) => ({ h, idx }))
-    .filter(({ h }) => h === 'training program' || h === 'training')
-    .map(({ idx }) => idx);
-  const urlIdxs = headers
-    .map((h, idx) => ({ h, idx }))
-    .filter(({ h }) => h === 'training url' || h === 'url')
-    .map(({ idx }) => idx);
-
-  for (let i = 1; i < lines.length; i++) {
-    const cols = splitCSVLine(lines[i]);
-    const skill = String(cols[skillIdx] || '').trim();
-    const skillKey = normalizeSkillKey(skill);
-    if (!skillKey) continue;
-
-    const provider = providerIdx >= 0 ? String(cols[providerIdx] || '').trim() : '';
-    const tier = tierIdx >= 0 ? String(cols[tierIdx] || '').trim() : '';
-
-    const entryMap = bySkill.get(skillKey) || new Map();
-
-    const pairCount = Math.max(programIdxs.length, urlIdxs.length, 1);
-    for (let j = 0; j < pairCount; j++) {
-      const program = programIdxs[j] != null ? String(cols[programIdxs[j]] || '').trim() : '';
-      const url = urlIdxs[j] != null ? String(cols[urlIdxs[j]] || '').trim() : '';
-      if (!program) continue;
-
-      const dedupeKey = `${program}__${url}`.toLowerCase();
-      if (!entryMap.has(dedupeKey)) {
-        entryMap.set(dedupeKey, { program, url, provider, tier });
-      }
-    }
-
-    if (entryMap.size) bySkill.set(skillKey, entryMap);
-  }
-
-  return new Map(
-    [...bySkill.entries()].map(([skillKey, entries]) => [skillKey, [...entries.values()]])
-  );
-}
-
 function toggleTheme() {
   isDark = !isDark;
   document.body.classList.toggle('dark', isDark);
@@ -790,23 +735,38 @@ function toggleTheme() {
   if (filtered.length) layout();
 }
 
+function safeParseJSON(value, fallback = {}) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (err) {
+    console.warn('Could not parse JSON field', err);
+    return fallback;
+  }
+}
+
+async function fetchTextWithFallback(urls) {
+  let lastError = null;
+
+  for (const url of urls) {
+    if (!url) continue;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return await res.text();
+    } catch (err) {
+      console.warn(`Fetch failed for ${url}`, err);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Failed to fetch data source');
+}
+
 async function loadData() {
   showState('loading');
   try {
-    const [rolesRes, skillTrainingRes] = await Promise.all([
-      fetch(SHEET),
-      fetch(SKILL_TRAINING_SHEET)
-    ]);
-
-    if (!rolesRes.ok || !skillTrainingRes.ok) throw new Error('Network error');
-
-    const [rolesCSV, skillTrainingCSV] = await Promise.all([
-      rolesRes.text(),
-      skillTrainingRes.text()
-    ]);
-
+    const rolesCSV = await fetchTextWithFallback([SHEET, LOCAL_FALLBACK_SHEET]);
     roles = parseCSV(rolesCSV);
-    skillToTrainings = parseSkillTrainingCSV(skillTrainingCSV);
     if (!roles.length) throw new Error('Empty data');
 
     roleById = new Map(roles.map(r => [r.id, r]));
@@ -870,9 +830,16 @@ function parseCSV(csv) {
       ? row.skills.split(',').map(s => s.trim()).filter(Boolean)
       : [];
 
+    row.trainingMap = safeParseJSON(row.trainings, {});
+    row.mappedSkillTags = row.mapped_skill_tags
+      ? row.mapped_skill_tags.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+
     row.category = (row.category || '').trim();
     row.level = (row.level || '').trim();
     row.title = (row.title || '').trim();
+    row.training_summary = (row.training_summary || '').trim();
+    row.mapping_method = (row.mapping_method || '').trim();
 
     if (row.id && row.title) out.push(row);
   }
@@ -911,12 +878,6 @@ function escapeHTML(str = '') {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
-}
-
-function trainingsForSkill(skill = '') {
-  const normKey = normalizeSkillKey(skill);
-  if (!normKey) return [];
-  return skillToTrainings.get(normKey) || [];
 }
 
 function hash01(s) {
@@ -1558,7 +1519,7 @@ function skillKey(roleId, skill, idx) {
 
 function renderSkills(role) {
   const skills = role.skills || [];
-  if (!skills.length) return '<p>—</p>';
+  if (!skills.length) return '<p>&mdash;</p>';
 
   const chips = skills.map((skill, idx) => {
     const panelId = skillKey(role.id, skill, idx);
@@ -1569,18 +1530,24 @@ function renderSkills(role) {
 
   const trainings = skills.map((skill, idx) => {
     const panelId = skillKey(role.id, skill, idx);
-    const linkedTrainings = trainingsForSkill(skill);
+    const linkedBlock = role.trainingMap?.[skill] || {};
+    const linkedTrainings = linkedBlock.recommendations || [];
+    const mappedSkill = linkedBlock.mapped_skill || '';
+    const skillDepth = linkedBlock.skill_depth || '';
 
     const trainingHTML = linkedTrainings.length
       ? linkedTrainings.map(training => {
           const labelParts = [training.program, training.provider].filter(Boolean);
           const label = labelParts.join(' · ');
-          const meta = training.tier ? `<span style="opacity:.72">${escapeHTML(training.tier)}</span>` : '';
+          const metaBits = [training.tier, mappedSkill, skillDepth].filter(Boolean);
+          const meta = metaBits.length
+            ? `<div class="training-meta">${escapeHTML(metaBits.join(' · '))}</div>`
+            : '';
 
           if (training.url) {
             return `
               <li class="training-item">
-                <a href="${escapeHTML(training.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label || training.program)}</a>
+                <a href="${escapeHTML(training.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label || training.program || 'Training')}</a>
                 ${meta}
               </li>
             `;
@@ -1588,7 +1555,7 @@ function renderSkills(role) {
 
           return `
             <li class="training-item">
-              <span>${escapeHTML(label || training.program)}</span>
+              <span>${escapeHTML(label || training.program || 'Training')}</span>
               ${meta}
             </li>
           `;
@@ -1652,6 +1619,14 @@ function renderPanel(role) {
     <div class="prow">
       <div class="prow-label">Skills</div>
       ${skillsHTML}
+    </div>
+    <div class="prow">
+      <div class="prow-label">Training summary</div>
+      <p>${escapeHTML(role.training_summary || '—')}</p>
+    </div>
+    <div class="prow">
+      <div class="prow-label">Mapped skill tags</div>
+      <p>${escapeHTML((role.mappedSkillTags || []).join(', ') || '—')}</p>
     </div>
     <div class="prow">
       <div class="prow-label">Career paths</div>
