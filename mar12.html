@@ -442,67 +442,65 @@ body.dark .panel-badge.senior { background:rgba(189,208,255,0.12); border-color:
 }
 .path-target { display:flex; flex-direction:column; }
 
-.skills-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.skills-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
 .skill-chip {
   font-size:11px; padding:3px 9px;
   background:var(--bg2); border:0.5px solid var(--sep);
   border-radius:6px; color:var(--label2);
 }
-.skill-item { width:100%; margin-bottom:6px; }
-.skill-item:last-child { margin-bottom:0; }
 .skill-chip-btn {
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  font-size:12px;
-  font-weight:600;
-  color:var(--label2);
-  background:var(--bg2);
-  border:0.5px solid var(--sep);
-  border-radius:8px;
-  padding:7px 10px;
+  font-family:inherit;
+  line-height:1.2;
   cursor:pointer;
-  transition:background 0.15s, border-color 0.15s, color 0.15s;
+  transition:background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
-.skill-chip-btn::after {
-  content:'▾';
-  font-size:11px;
-  color:var(--label4);
-  transition:transform 0.2s ease;
+.skill-chip-btn:focus-visible {
+  outline:2px solid rgba(76,175,46,0.55);
+  outline-offset:2px;
 }
-.skill-chip-btn:hover { background:var(--bg3); }
-.skill-chip-btn[aria-expanded="true"] {
-  border-color:rgba(76,175,46,0.42);
-  color:var(--label);
+.skill-chip-btn[aria-expanded="true"],
+.skill-chip-btn.open {
+  background:rgba(76,175,46,0.16);
+  border-color:rgba(76,175,46,0.46);
+  color:var(--accent2);
 }
-.skill-chip-btn[aria-expanded="true"]::after { transform:rotate(180deg); }
+body.dark .skill-chip-btn[aria-expanded="true"],
+body.dark .skill-chip-btn.open {
+  background:rgba(113,227,76,0.18);
+  border-color:rgba(113,227,76,0.44);
+  color:#c9ffb9;
+}
 
 .skill-trainings {
-  margin-top:5px;
-  border:0.5px solid var(--sep2);
+  margin-top:8px;
+  padding:8px;
   border-radius:8px;
-  background:var(--glass);
-  padding:7px 10px;
-  display:none;
+  border:0.5px solid var(--sep2);
+  background:color-mix(in srgb, var(--bg2) 72%, transparent);
 }
-.skill-trainings.open { display:block; }
+body.dark .skill-trainings {
+  background:color-mix(in srgb, var(--bg2) 58%, transparent);
+}
+.skill-trainings[hidden] { display:none; }
+
 .training-list {
-  list-style:disc;
-  padding-left:16px;
+  list-style:none;
   display:flex;
-  flex-direction:column;
-  gap:5px;
+  flex-wrap:wrap;
+  gap:6px;
 }
-.training-list li {
-  font-size:12px;
+.training-item {
+  font-size:11px;
+  line-height:1.25;
   color:var(--label3);
-  line-height:1.4;
+  background:var(--glass);
+  border:0.5px solid var(--sep2);
+  border-radius:999px;
+  padding:2px 8px;
 }
-.training-empty {
-  font-size:12px;
-  color:var(--label4);
+body.dark .training-item {
+  color:#d6e6ff;
+  border-color:rgba(207,224,255,0.24);
 }
 
 /* filter panel */
@@ -1571,20 +1569,59 @@ function openPanel(role) {
   document.getElementById('panel').classList.add('open');
 }
 
+function skillKey(roleId, skill, idx) {
+  return `skill-${String(roleId || 'role').replace(/[^a-z0-9_-]/gi, '-')}-${idx}-${String(skill || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`;
+}
+
+function renderSkills(role) {
+  const skills = role.skills || [];
+  if (!skills.length) return '<p>—</p>';
+
+  const chips = skills.map((skill, idx) => {
+    const panelId = skillKey(role.id, skill, idx);
+    return `
+      <button type="button" class="skill-chip skill-chip-btn" aria-expanded="false" aria-controls="${panelId}">${escapeHTML(skill)}</button>
+    `;
+  }).join('');
+
+  const trainings = skills.map((skill, idx) => {
+    const panelId = skillKey(role.id, skill, idx);
+    return `
+      <div id="${panelId}" class="skill-trainings" hidden>
+        <ul class="training-list">
+          <li class="training-item">Practice ${escapeHTML(skill)} in weekly role projects</li>
+          <li class="training-item">Pair with a mentor on ${escapeHTML(skill)} fundamentals</li>
+        </ul>
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="skills-wrap">${chips}</div>${trainings}`;
+}
+
+function wireSkillButtons() {
+  document.querySelectorAll('.skill-chip-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panelId = btn.getAttribute('aria-controls');
+      if (!panelId) return;
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+
+      const willOpen = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', String(willOpen));
+      btn.classList.toggle('open', willOpen);
+      panel.hidden = !willOpen;
+    });
+  });
+}
+
 function renderPanel(role) {
   const k = levelKey(role.level);
   document.getElementById('panelTop').innerHTML =
     `<div class="panel-badge ${k}">${escapeHTML(role.level)}</div>
      <div class="panel-title">${escapeHTML(role.title)}</div>`;
 
-  const skillsHTML = (role.skills || []).length
-    ? `<div class="skills-wrap">${role.skills.map(skill => {
-        const key = normalizeSkillKey(skill);
-        const match = skillTrainingByKey.get(key);
-        const label = (match && match.label) || String(skill || '').trim();
-        return `<span class="skill-chip">${escapeHTML(label)}</span>`;
-      }).join('')}</div>`
-    : '<p>—</p>';
+  const skillsHTML = renderSkills(role);
 
   const panelBody = document.getElementById('panelBody');
   panelBody.innerHTML = `
@@ -1614,26 +1651,7 @@ function renderPanel(role) {
     </div>
   `;
 
-  panelBody.querySelectorAll('.skill-chip-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = btn.dataset.skillIndex;
-      const trainingPanel = panelBody.querySelector(`#skill-trainings-${idx}`);
-      if (!trainingPanel) return;
-
-      const isExpanded = btn.getAttribute('aria-expanded') === 'true';
-      panelBody.querySelectorAll('.skill-chip-btn[aria-expanded="true"]').forEach(otherBtn => {
-        otherBtn.setAttribute('aria-expanded', 'false');
-      });
-      panelBody.querySelectorAll('.skill-trainings.open').forEach(otherPanel => {
-        otherPanel.classList.remove('open');
-      });
-
-      if (!isExpanded) {
-        btn.setAttribute('aria-expanded', 'true');
-        trainingPanel.classList.add('open');
-      }
-    });
-  });
+  wireSkillButtons();
 }
 
 function openPanelById(id) {
