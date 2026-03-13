@@ -822,6 +822,7 @@
                 const csvText = await response.text();
 
                 roles = parseCSV(csvText);
+                window.roles = roles;
                 if (roles.length === 0) throw new Error('No data found');
 
                 filteredRoles = [...roles];
@@ -843,34 +844,55 @@
         function updateCategoryFilters() {
             const categories = [...new Set(roles.map(r => r.category))].sort();
             const container = document.getElementById('categoryFilters');
-            container.innerHTML = categories.map(cat =>
-                `<div class="filter-option" data-filter="category" data-value="${cat}" onclick="setFilter('category', '${cat}')">${cat}</div>`
-            ).join('');
+            container.innerHTML = '';
+
+            categories.forEach((category) => {
+                const option = document.createElement('div');
+                option.className = 'filter-option';
+                option.dataset.filter = 'category';
+                option.dataset.value = category;
+                option.textContent = category;
+                option.addEventListener('click', () => setFilter('category', category));
+                container.appendChild(option);
+            });
+        }
+
+        function parseCSVLine(line) {
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i += 1;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+
+            values.push(current.trim());
+            return values;
         }
 
         function parseCSV(csv) {
             const lines = csv.trim().split('\n');
             if (lines.length < 2) return [];
 
-            const headers = lines[0].split(',');
-            const roles = [];
+            const headers = parseCSVLine(lines[0]);
+            const parsedRoles = [];
 
             for (let i = 1; i < lines.length; i++) {
-                const values = [];
-                let current = '';
-                let inQuotes = false;
-
-                for (let char of lines[i]) {
-                    if (char === '"') {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        values.push(current.trim());
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                values.push(current.trim());
+                const values = parseCSVLine(lines[i]);
 
                 const role = {};
                 headers.forEach((header, idx) => {
@@ -890,11 +912,11 @@
                 }
 
                 if (role.id && role.title) {
-                    roles.push(role);
+                    parsedRoles.push(role);
                 }
             }
 
-            return roles;
+            return parsedRoles;
         }
 
         function getSharedSkills(role1, role2) {
@@ -1062,6 +1084,16 @@
             });
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[char]);
+        }
+
         function showDetails(role) {
             const panel = document.getElementById('detailsPanel');
             const content = document.getElementById('detailsContent');
@@ -1082,28 +1114,28 @@
 
             const levelClass = role.level === 'Entry' ? 'entry' : (role.level === 'Mid-Level' ? 'mid' : 'senior');
             content.innerHTML = `
-                <div class="detail-level-badge ${levelClass}-badge">${role.level}</div>
-                <h2>${role.title}</h2>
+                <div class="detail-level-badge ${levelClass}-badge">${escapeHtml(role.level)}</div>
+                <h2>${escapeHtml(role.title)}</h2>
                 <div class="detail-section">
                     <h3>Category & Level</h3>
-                    <p>${role.category} • ${role.level}</p>
+                    <p>${escapeHtml(role.category)} • ${escapeHtml(role.level)}</p>
                 </div>
                 <div class="detail-section">
                     <h3>Salary Range</h3>
-                    <p>${role.salary}</p>
+                    <p>${escapeHtml(role.salary)}</p>
                 </div>
                 <div class="detail-section">
                     <h3>Description</h3>
-                    <p>${role.description}</p>
+                    <p>${escapeHtml(role.description)}</p>
                 </div>
                 <div class="detail-section">
                     <h3>Education</h3>
-                    <p>${role.education}</p>
+                    <p>${escapeHtml(role.education)}</p>
                 </div>
                 <div class="detail-section">
                     <h3>Skills</h3>
                     <ul>
-                        ${(role.skills || []).map(skill => `<li>${skill}</li>`).join('')}
+                        ${(role.skills || []).map(skill => `<li>${escapeHtml(skill)}</li>`).join('')}
                     </ul>
                 </div>
                 ${role.connections && role.connections.length > 0 ? `
@@ -1112,12 +1144,19 @@
                     <ul>
                         ${role.connections.map(connId => {
                             const connRole = roles.find(r => r.id === connId);
-                            return connRole ? `<li onclick="showDetails(roles.find(r => r.id === '${connId}'))">${connRole.title}</li>` : '';
+                            return connRole ? `<li data-connection-id="${escapeHtml(connId)}">${escapeHtml(connRole.title)}</li>` : '';
                         }).join('')}
                     </ul>
                 </div>
                 ` : ''}
             `;
+
+            content.querySelectorAll('[data-connection-id]').forEach((item) => {
+                item.addEventListener('click', () => {
+                    const nextRole = roles.find(r => r.id === item.dataset.connectionId);
+                    if (nextRole) showDetails(nextRole);
+                });
+            });
 
             panel.classList.add('open');
         }
@@ -1137,7 +1176,7 @@
         function setFilter(type, value) {
             activeFilters[type] = value;
             document.querySelectorAll(`[data-filter="${type}"]`).forEach(el => el.classList.remove('active'));
-            const activeEl = document.querySelector(`[data-filter="${type}"][data-value="${value}"]`);
+            const activeEl = document.querySelector(`[data-filter="${type}"][data-value="${CSS.escape(value)}"]`);
             if (activeEl) activeEl.classList.add('active');
             filterRoles();
         }
