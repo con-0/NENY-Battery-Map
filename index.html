@@ -267,9 +267,13 @@
         .metro-line {
             fill: none;
             stroke-width: 2;
-            opacity: 0.25;
+            opacity: 0;
             transition: opacity 0.4s ease, stroke-width 0.3s ease;
             stroke-linecap: round;
+        }
+
+        .metro-line.visible {
+            opacity: 0.25;
         }
 
         .metro-line.highlighted {
@@ -1043,6 +1047,19 @@
 
             // Connection lines (in viewBox units)
             const lineColors = { entry: 'var(--entry)', mid: 'var(--mid)', senior: 'var(--senior)' };
+            const lineLengthFactor = 0.75;
+
+            function getShortenedLineEndpoints(source, target, factor) {
+                const centerX = (source.x + target.x) / 2;
+                const centerY = (source.y + target.y) / 2;
+                return {
+                    x1: centerX + (source.x - centerX) * factor,
+                    y1: centerY + (source.y - centerY) * factor,
+                    x2: centerX + (target.x - centerX) * factor,
+                    y2: centerY + (target.y - centerY) * factor
+                };
+            }
+
             filteredRoles.forEach(role => {
                 if (!role.connections || role.connections.length === 0) return;
 
@@ -1055,13 +1072,14 @@
 
                     const targetRole = roles.find(r => r.id === connId);
                     if (!targetRole) return;
+                    const shortenedLine = getShortenedLineEndpoints(sourcePos, targetPos, lineLengthFactor);
 
                     const levelClass = targetRole.level === 'Entry' ? 'entry' : (targetRole.level === 'Mid-Level' ? 'mid' : 'senior');
                     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    line.setAttribute('x1', sourcePos.x);
-                    line.setAttribute('y1', sourcePos.y);
-                    line.setAttribute('x2', targetPos.x);
-                    line.setAttribute('y2', targetPos.y);
+                    line.setAttribute('x1', shortenedLine.x1);
+                    line.setAttribute('y1', shortenedLine.y1);
+                    line.setAttribute('x2', shortenedLine.x2);
+                    line.setAttribute('y2', shortenedLine.y2);
                     line.setAttribute('class', `metro-line line-${levelClass}`);
                     line.dataset.source = role.id;
                     line.dataset.target = connId;
@@ -1099,8 +1117,10 @@
             const content = document.getElementById('detailsContent');
 
             document.querySelectorAll('#linesSvg .metro-line').forEach(line => {
+                line.classList.remove('visible');
                 line.classList.remove('highlighted');
                 if (line.dataset.source === role.id || line.dataset.target === role.id) {
+                    line.classList.add('visible');
                     line.classList.add('highlighted');
                 }
             });
@@ -1189,7 +1209,10 @@
         function closeDetails() {
             document.getElementById('detailsPanel').classList.remove('open');
             document.querySelectorAll('.metro-station').forEach(s => s.classList.remove('selected'));
-            document.querySelectorAll('#linesSvg .metro-line').forEach(l => l.classList.remove('highlighted'));
+            document.querySelectorAll('#linesSvg .metro-line').forEach(l => {
+                l.classList.remove('visible');
+                l.classList.remove('highlighted');
+            });
         }
 
         document.getElementById('searchInput').addEventListener('input', (e) => {
