@@ -362,6 +362,60 @@
             border-bottom: none;
         }
 
+        .skill-item {
+            border-bottom: 1px solid var(--border);
+            padding: 4px 0 10px;
+        }
+
+        .skill-toggle {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            text-align: left;
+            font: inherit;
+            padding: 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .skill-toggle::after {
+            content: '+';
+            color: var(--entry);
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .skill-toggle[aria-expanded="true"]::after {
+            content: '−';
+        }
+
+        .skill-details {
+            display: none;
+            padding: 0 0 8px;
+        }
+
+        .skill-details.open {
+            display: block;
+        }
+
+        .skill-details p {
+            margin-bottom: 8px;
+        }
+
+        .skill-training-link {
+            color: var(--entry);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .skill-training-link:hover {
+            text-decoration: underline;
+        }
+
         .detail-section li[onclick] {
             color: var(--entry);
             cursor: pointer;
@@ -810,6 +864,33 @@
         let stationPositions = {};
         let viewBox = { cx: 50, cy: 50, size: 100 };
         let radii = { entry: 18, mid: 35, senior: 48 };
+        const skillLibrary = {
+            "project management": {
+                description: 'Planning, tracking, and delivering work with clear scope, timeline, and stakeholder communication.',
+                trainingLabel: 'Google Project Management Certificate',
+                trainingUrl: 'https://www.coursera.org/professional-certificates/google-project-management'
+            },
+            "data analysis": {
+                description: 'Collecting, cleaning, and interpreting data to uncover insights and support decisions.',
+                trainingLabel: 'Google Data Analytics Certificate',
+                trainingUrl: 'https://www.coursera.org/professional-certificates/google-data-analytics'
+            },
+            "communication": {
+                description: 'Sharing information clearly across technical and non-technical audiences in writing and conversation.',
+                trainingLabel: 'Improving Communication Skills',
+                trainingUrl: 'https://www.coursera.org/learn/wharton-communication-skills'
+            },
+            "leadership": {
+                description: 'Guiding teams, setting direction, and helping others perform at their best.',
+                trainingLabel: 'Leading People and Teams Specialization',
+                trainingUrl: 'https://www.coursera.org/specializations/leading-people-teams'
+            },
+            "problem solving": {
+                description: 'Breaking down complex issues, evaluating options, and implementing practical solutions.',
+                trainingLabel: 'Problem Solving Skills for University Success',
+                trainingUrl: 'https://www.coursera.org/learn/problem-solving-skills'
+            }
+        };
 
         async function loadData() {
             const loadingState = document.getElementById('loadingState');
@@ -1112,6 +1193,24 @@
             })[char]);
         }
 
+        function slugSkill(skill) {
+            return String(skill || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+        }
+
+        function getSkillResource(skill) {
+            const normalized = slugSkill(skill);
+            const resource = skillLibrary[normalized];
+
+            if (resource) return resource;
+
+            const escapedSkill = encodeURIComponent(skill);
+            return {
+                description: `${skill} is an important competency for this role.`,
+                trainingLabel: `Find ${skill} training`,
+                trainingUrl: `https://www.coursera.org/search?query=${escapedSkill}`
+            };
+        }
+
         function showDetails(role) {
             const panel = document.getElementById('detailsPanel');
             const content = document.getElementById('detailsContent');
@@ -1155,7 +1254,18 @@
                 <div class="detail-section">
                     <h3>Skills</h3>
                     <ul>
-                        ${(role.skills || []).map(skill => `<li>${escapeHtml(skill)}</li>`).join('')}
+                        ${(role.skills || []).map((skill, index) => {
+                            const skillInfo = getSkillResource(skill);
+                            return `
+                                <li class="skill-item">
+                                    <button type="button" class="skill-toggle" data-skill-toggle="${index}" aria-expanded="false">${escapeHtml(skill)}</button>
+                                    <div class="skill-details" data-skill-details="${index}">
+                                        <p>${escapeHtml(skillInfo.description)}</p>
+                                        <a class="skill-training-link" href="${escapeHtml(skillInfo.trainingUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(skillInfo.trainingLabel)}</a>
+                                    </div>
+                                </li>
+                            `;
+                        }).join('')}
                     </ul>
                 </div>
                 ${role.connections && role.connections.length > 0 ? `
@@ -1175,6 +1285,17 @@
                 item.addEventListener('click', () => {
                     const nextRole = roles.find(r => r.id === item.dataset.connectionId);
                     if (nextRole) showDetails(nextRole);
+                });
+            });
+
+            content.querySelectorAll('[data-skill-toggle]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const id = button.dataset.skillToggle;
+                    const detail = content.querySelector(`[data-skill-details="${id}"]`);
+                    const isOpen = button.getAttribute('aria-expanded') === 'true';
+
+                    button.setAttribute('aria-expanded', String(!isOpen));
+                    if (detail) detail.classList.toggle('open', !isOpen);
                 });
             });
 
